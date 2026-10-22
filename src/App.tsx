@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, type CSSProperties } from 'react'
 import { ArrowUpRight, ArrowDown, ArrowUp, Plus, Minus, Menu, X, Copy, Check, RotateCcw } from 'lucide-react'
 

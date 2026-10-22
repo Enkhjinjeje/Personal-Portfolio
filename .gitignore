@@ -1,7 +1,10 @@
 node_modules/
-dist/
-.venv/
-.impeccable/review/
-.impeccable/questions/
-reference-*.png
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+test-results/
+playwright-report/
+.env*
+!.env.example
 .DS_Store
