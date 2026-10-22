@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.venv/
+.impeccable/review/
+.impeccable/questions/
+reference-*.png
+.DS_Store
