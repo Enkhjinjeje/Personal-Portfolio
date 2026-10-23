@@ -8,3 +8,10 @@ playwright-report/
 .env*
 !.env.example
 .DS_Store
+
+# design tool working files
+.taste-skill/
+.impeccable/
+
+# side projects kept beside the portfolio, not part of it
+experiments/

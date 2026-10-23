@@ -5,7 +5,7 @@ import { CodeXml, Globe2, GraduationCap, HeartHandshake, Shirt, Volleyball, Plus
 import './curious-mind.css'
 
 const interests = [
-  { Icon: CodeXml, label: 'Building with code', text: 'I built the Mongolian Cultural Center’s website with Next.js, React, Tailwind CSS, and Supabase—a place to discover programs and stay connected.', image: '/cultural-center.png', x: -73, y: 129, angle: -14 },
+  { Icon: CodeXml, label: 'Building with code', text: 'I built the Mongolian Cultural Center’s website with Next.js, React, Tailwind CSS, and Supabase—a place to discover programs and stay connected.', image: '/cultural-center.webp', x: -73, y: 129, angle: -14 },
   { Icon: Globe2, label: 'Connecting cultures', text: 'As a co-founder of the Mongolian Cultural Center in North America, I help create space for culture, shared experiences, and the next generation.', x: 3, y: 113, angle: 12 },
   { Icon: GraduationCap, label: 'Always learning', text: 'I’m studying Computer Science at the University of Washington, with graduation expected in June 2028. Curiosity keeps me building and trying new things.', x: 75, y: 155, angle: 18 },
   { Icon: HeartHandshake, label: 'Bringing people together', text: 'From college workshops to summer camps and campus visits, community is part of my work. I like making room for people to create and belong.', x: -8, y: 190, angle: -9 },
@@ -72,14 +72,14 @@ export default function CuriousMind() {
         onAnimationEnd={event => { if (event.target === event.currentTarget && phase === 'enter') setPhase('idle') }}>
         <button ref={closeButton} className="mind-bubble-close" aria-label="Close interest details" onClick={closeBubble}><X size={18} /></button>
         <h3>{interest.label}</h3>
-        {interest.image && <img src={interest.image} alt="Mongolian Cultural Center website I built" width="1440" height="960" />}
+        {interest.image && <img src={interest.image} alt="Mongolian Cultural Center website I built" width="1440" height="1000" />}
         <p>{interest.text}</p>
       </section>}
     </div>
     <div className="mind-stage">
       <button ref={trigger} className="mind-head-trigger" aria-label="Explore what's on my mind" aria-expanded={open} aria-controls="mind-interests" onClick={toggleHead} />
       <span className="mind-opening" aria-hidden="true" />
-      <span className="mind-head mind-face" aria-hidden="true"><img src="/curious-mind.png" alt="" width="1024" height="1024" draggable={false} /></span>
+      <span className="mind-head mind-face" aria-hidden="true"><img src="/curious-mind.webp" alt="" width="1254" height="1254" draggable={false} /></span>
       <div className="mind-objects" id="mind-interests" inert={!open}>
         {interests.map(({ Icon, label, x, y, angle }, index) => <button
           ref={element => { iconButtons.current[index] = element }}
@@ -89,7 +89,7 @@ export default function CuriousMind() {
           style={{ '--object-x': `${x}px`, '--object-y': `${y}px`, '--object-angle': `${angle}deg`, '--object-delay': `${index * 35}ms` } as CSSProperties}
         ><Icon strokeWidth={1.65} aria-hidden="true" /><span className="mind-object-label" aria-hidden="true">{label}</span></button>)}
       </div>
-      <span className="mind-head mind-crown" aria-hidden="true"><img src="/curious-mind.png" alt="" width="1024" height="1024" draggable={false} /></span>
+      <span className="mind-head mind-crown" aria-hidden="true"><img src="/curious-mind.webp" alt="" width="1254" height="1254" draggable={false} /></span>
       <span className="mind-spark mind-spark-one" aria-hidden="true" />
       <span className="mind-spark mind-spark-two" aria-hidden="true" />
     </div>
