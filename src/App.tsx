@@ -1,7 +1,10 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
-import { ArrowUpRight, ArrowDown, ArrowUp, Plus, Minus, Menu, X, Copy, Check, RotateCcw } from 'lucide-react'
+import { useRef, useState } from 'react'
+import CuriousMind from './components/CuriousMind'
+import DotFieldBackground, { type PortraitControl } from './components/DotFieldBackground'
+import ThemeToggle from './components/ThemeToggle'
+import { ArrowUpRight, ArrowDown, ArrowUp, Plus, Minus, Menu, X, Copy, Check } from 'lucide-react'
 
 const email = 'enkhjinjeje@gmail.com'
 const experience = [
@@ -12,10 +15,10 @@ const experience = [
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [remixed, setRemixed] = useState(false)
-  const [pointer, setPointer] = useState({ x: 0, y: 0 })
+  const [colored, setColored] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
+  const portrait = useRef<PortraitControl>(null)
   async function copyEmail() {
     try {
       await navigator.clipboard.writeText(email)
@@ -25,14 +28,18 @@ export default function App() {
   }
   const closeMenu = () => setMenuOpen(false)
   return <>
+    <DotFieldBackground until=".hero" frame=".hero-portrait" src="/portrait-cutout.png" control={portrait} onColor={setColored} />
     <a className="skip-link" href="#main">Skip to content</a>
     <header className="site-header shell" id="top">
       <a className="brand" href="#top" aria-label="Jeje, home">jeje<span className="brand-dot">.</span></a>
       <nav className="desktop-nav flex items-center gap-8" aria-label="Main navigation">
         <a href="#work">Work</a><a href="#about">About</a><a href="#experience">Experience</a>
       </nav>
-      <a className="header-contact inline-flex items-center gap-3" href="#contact">Let’s talk <ArrowUpRight size={18}/></a>
-      <button className="menu-button" aria-expanded={menuOpen} aria-controls="mobile-nav" aria-label={menuOpen ? 'Close menu' : 'Open menu'} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X/> : <Menu/>}</button>
+      <div className="header-actions">
+        <a className="header-contact inline-flex items-center gap-3" href="#contact">Let’s talk <ArrowUpRight size={18}/></a>
+        <ThemeToggle />
+        <button className="menu-button" aria-expanded={menuOpen} aria-controls="mobile-nav" aria-label={menuOpen ? 'Close menu' : 'Open menu'} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X/> : <Menu/>}</button>
+      </div>
       {menuOpen && <nav id="mobile-nav" className="mobile-nav" aria-label="Mobile navigation" onKeyDown={e => { if(e.key === 'Escape') { closeMenu(); document.querySelector<HTMLButtonElement>('.menu-button')?.focus() } }}>
         {['Work','About','Experience','Contact'].map(label=><a key={label} href={`#${label.toLowerCase()}`} onClick={closeMenu}>{label}<ArrowUpRight size={20}/></a>)}
       </nav>}
@@ -44,22 +51,18 @@ export default function App() {
           <h1 id="intro-heading">Good things happen<br/>when curious minds<br/>come together.</h1>
           <div className="hero-bio">
             <p>I’m Enkhjin. You can call me Jeje.</p>
-            <p>A computer science student building<br className="hidden lg:block"/> websites, communities, and what’s next.</p>
+            <p>A computer science student building websites, communities, and what’s next.</p>
             <a className="text-link inline-flex items-center gap-3" href="#work">Explore my work <ArrowDown size={17}/></a>
           </div>
         </div>
-        <div className="signature-wrap">
-          <button className={`signature ${remixed ? 'is-remixed' : ''}`} aria-label="Remix the Jeje lettering" aria-pressed={remixed}
-            onClick={() => { setRemixed(!remixed); setPointer({x:0,y:0}) }}
-            onPointerMove={e => { if(e.pointerType !== 'mouse') return; const r=e.currentTarget.getBoundingClientRect(); setPointer({x:(e.clientX-r.left)/r.width-.5,y:(e.clientY-r.top)/r.height-.5}) }}
-            onPointerLeave={() => setPointer({x:0,y:0})}
-            style={{'--pointer-x': pointer.x, '--pointer-y': pointer.y} as CSSProperties}>
-            <span aria-hidden="true" className="letter letter-j">j</span><span aria-hidden="true" className="letter letter-e">e</span><span aria-hidden="true" className="letter letter-j2">j</span><span aria-hidden="true" className="letter letter-e2">e</span><span aria-hidden="true" className="signature-period">.</span>
+        <div className="hero-portrait" role="img" aria-label={`Jeje’s portrait drawn in dots, ${colored ? 'in colour' : 'in black and white'}: smiling, in glasses and a black coat`} />
+        <div className="hero-foot">
+          <p>Based in Bothell, Washington</p>
+          <button className="color-hint" aria-pressed={colored} onClick={() => portrait.current?.wave()}>
+            <span className="on-mouse">Move your cursor.</span>
+            <span className="on-mouse">{colored ? 'Click again for black and white.' : 'Click anywhere to color me in.'}</span>
+            <span className="on-touch">{colored ? 'Tap again for black and white.' : 'Tap anywhere to color me in.'}</span>
           </button>
-          <div className="hero-foot flex items-center justify-between gap-4">
-            <p>Based in Bothell, Washington</p>
-            <button className="remix-label inline-flex items-center gap-2" onClick={()=>setRemixed(!remixed)}>{remixed ? <><RotateCcw size={14}/> Put things back</> : <>A little room to play. Tap my name <Plus size={14}/></>}</button>
-          </div>
         </div>
       </section>
 
@@ -85,7 +88,7 @@ export default function App() {
 
       <section id="about" className="about-section" aria-labelledby="about-heading">
         <div className="shell about-layout">
-          <div><h2 id="about-heading">More than<br/>a screen.</h2><div className="connection-mark" aria-hidden="true"><svg viewBox="0 0 240 180" fill="none"><ellipse cx="95" cy="90" rx="65" ry="65" stroke="currentColor" strokeWidth="2"/><ellipse cx="145" cy="90" rx="65" ry="65" stroke="currentColor" strokeWidth="2"/><circle cx="120" cy="90" r="7" fill="currentColor"/></svg></div></div>
+          <div className="about-portrait-column"><h2 id="about-heading">More than<br/>a screen.</h2><CuriousMind /></div>
           <div className="about-copy"><p className="about-lead">I like connecting things.<br/>Ideas to code. People to culture.<br/>Curiosity to something real.</p><p>I’m studying Computer Science at the University of Washington, with graduation expected in June 2028. My work lives between software and community: building a website, helping a student get unstuck, or bringing people together around a shared idea.</p><p>Alongside development, I co-founded the Mongolian Cultural Center in North America and founded a student fashion and culture club at UW. Different spaces, the same instinct: make room for people to create and belong.</p><a className="light-link inline-flex items-center gap-3" href="/JejeResume.pdf" target="_blank" rel="noreferrer">Read my résumé <ArrowUpRight size={18}/></a></div>
         </div>
       </section>

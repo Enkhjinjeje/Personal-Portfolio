@@ -13,11 +13,14 @@ test('portfolio content, interactions, and responsive layout survive the migrati
   await page.keyboard.press('Tab')
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused()
 
-  const remix = page.getByRole('button', { name: 'Remix the Jeje lettering' })
-  await remix.click()
-  await expect(remix).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: 'Put things back' }).click()
-  await expect(remix).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('img', { name: /portrait drawn in dots, in black and white/ })).toBeVisible()
+  const color = page.locator('.color-hint')
+  await expect(color).toHaveAccessibleName(/color me in/)
+  await color.click()
+  await expect(color).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('img', { name: /portrait drawn in dots, in colour/ })).toBeVisible()
+  await color.click()
+  await expect(color).toHaveAttribute('aria-pressed', 'false')
 
   for (const detail of await page.locator('details').all()) {
     await detail.locator('summary').click()
@@ -45,7 +48,10 @@ test('portfolio content, interactions, and responsive layout survive the migrati
     await expect(page.locator((await link.getAttribute('href'))!)).toHaveCount(1)
   }
   await page.locator('.project-visual').scrollIntoViewIfNeeded()
-  await expect.poll(() => page.locator('img').evaluateAll(images => images.every(image => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0))).toBe(true)
+  // every picture that is on show has loaded; hidden phone copies and later crossfade frames load lazily
+  await expect.poll(() => page.locator('img').evaluateAll(images => images
+    .filter(image => image instanceof HTMLImageElement && image.checkVisibility() && image.loading !== 'lazy')
+    .every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true)
 
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 1000 })
@@ -72,7 +78,7 @@ test('portfolio content, interactions, and responsive layout survive the migrati
 
 test('Next.js serves the portfolio and metadata before JavaScript runs', async ({ browser }) => {
   const page = await browser.newPage({ javaScriptEnabled: false })
-  await page.goto('http://127.0.0.1:3000/')
+  await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Enkhjin/)
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
