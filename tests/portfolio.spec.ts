@@ -56,18 +56,25 @@ test('the four corners flow between pages that each fit one screen', async ({ pa
     await expect(page.locator('html')).not.toHaveClass(/is-flowing/)
   }
 
-  // the projects scroll through their list, and the details follow the project in view
+  // the projects are an endless canvas: arrow keys pan it, a tile opens its details, Escape closes them
   await page.goto('/projects')
-  await expect(page.locator('.projects-meta')).toContainText('June 2025 – Present')
-  await page.getByRole('button', { name: 'Next →' }).click()
-  await expect(page.locator('.projects-meta')).toContainText('Mongolian Cultural Center staff')
-  await page.locator('.projects-stage').focus()
-  await page.keyboard.press('ArrowDown')
-  await expect(page.locator('.projects-meta')).toContainText('Pinecone Solutions')
-  await expect(page.locator('.projects-text')).toContainText('501(c)(3)')
+  const plane = page.locator('.project-plane')
+  const before = await plane.evaluate(el => el.style.transform)
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => plane.evaluate(el => el.style.transform)).not.toBe(before)
+  await page.locator('.project-tile[tabindex="0"]').first().focus()
+  await page.keyboard.press('Enter')
+  const detail = page.getByRole('dialog', { name: 'Mongolian Cultural Center website' })
+  await expect(detail).toContainText('501(c)(3)')
+  await expect(detail).toContainText('June 2025 – Present')
+  await page.keyboard.press('Escape')
+  await expect(detail).toHaveCount(0)
+  await expect(page).toHaveURL(/\/projects$/)
 
   // Esc flows home from any other page
   await page.goto('/work')
+  // wait for the page's script, which listens for Escape
+  await page.waitForLoadState('networkidle')
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/\/$/)
   await expect(page.locator('html')).not.toHaveClass(/is-flowing/)

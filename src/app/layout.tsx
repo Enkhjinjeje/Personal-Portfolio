@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import '@fontsource-variable/manrope'
+import { Manrope } from 'next/font/google'
 import '../style.css'
 import FieldProvider from '../components/field/FieldProvider'
 import CornerNav from '../components/CornerNav'
 import ThemeToggle from '../components/ThemeToggle'
+
+// self-hosted and preloaded at build time, with a fallback sized to match, so the text doesn't jump when it loads
+const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope', display: 'swap' })
 
 const title = 'Jeje — Developer & community builder'
 const description = 'Enkhjin ‘Jeje’ Chuluunkhuu — computer science student, developer, and community builder. Explore my work in software, culture, and connection.'
@@ -26,7 +29,7 @@ const themeScript = `document.documentElement.classList.add('js');try{const t=lo
 
 // One screen, no page scroll: the field behind, the four pages in the corners, the current page between them
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="en" suppressHydrationWarning>
+  return <html lang="en" className={manrope.variable} suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
     {/* browser extensions (Grammarly, ColorZilla and others) add attributes to <body> before React loads */}
     <body suppressHydrationWarning>

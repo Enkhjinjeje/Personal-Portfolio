@@ -20,13 +20,14 @@ export const skills = [
   { title: 'From idea to release', items: 'Git, GitHub, Figma, UI/UX prototyping, Vercel, Bash' },
 ]
 
-// The projects page: what I've built and started. Every figure comes from the résumé. `details` sit on the left,
-// `figures` and `stack` on the card in the middle, `kind`, `title` and `text` on the right.
+// The projects page: websites I've built. Figures are facts about each project. `image` is a screenshot of the live
+// site, which the projects canvas draws in dots.
 export type Project = {
   id: string
   title: string
   kind: string
   text: string
+  image: string
   details: { label: string, items: string[] }[]
   figures: { value: string, label: string }[]
   stack?: string[]
@@ -35,37 +36,27 @@ export type Project = {
 
 export const projects: Project[] = [
   {
-    id: 'mcc-website', title: 'Mongolian Cultural Center website', kind: 'Full-stack website',
-    text: 'A full-stack site for a 501(c)(3) cultural nonprofit, giving our community one place to discover programs, find events, and stay connected. The responsive interface works across devices with near-instant page loads.',
+    id: 'mcc-website', title: 'Mongolian Cultural Center website', kind: 'Full-stack website', image: '/projects/mcc.webp',
+    text: 'A full-stack site for a 501(c)(3) cultural nonprofit, giving our community one place to discover programs, find events, and stay connected, with a publishing dashboard so staff post updates themselves.',
     details: [{ label: 'Role', items: ['Design', 'Full-stack development'] }, { label: 'When', items: ['June 2025 – Present'] }, { label: 'For', items: ['Mongolian Cultural Center in North America'] }],
     figures: [{ value: '400+', label: 'visitors' }, { value: '2,000', label: 'page views' }],
     stack: ['Next.js', 'React', 'Tailwind CSS', 'Supabase', 'Vercel'],
     link: { href: culturalCenterSite, label: 'mongolianculturalcenterna.org' },
   },
   {
-    id: 'publishing-dashboard', title: 'Publishing dashboard', kind: 'Admin tool',
-    text: 'An admin dashboard inside the center’s website, so staff publish events and programs themselves without code changes, replacing manual Facebook posts.',
-    details: [{ label: 'Role', items: ['Full-stack development'] }, { label: 'When', items: ['June 2025 – Present'] }, { label: 'For', items: ['Mongolian Cultural Center staff'] }],
-    figures: [{ value: '6', label: 'programs' }, { value: '22', label: 'events published' }],
-    stack: ['Next.js', 'Supabase'],
+    id: 'ag-portfolio', title: 'Amarmend Gantulga portfolio', kind: 'Student portfolio', image: '/projects/ag.webp',
+    text: 'A portfolio for Amarmend, a physics student, tutor and community volunteer from Darkhan, Mongolia: “Learning. Giving back.” Five pages on his physics, service, life and résumé.',
+    details: [{ label: 'Role', items: ['Design', 'Development'] }, { label: 'For', items: ['Amarmend Gantulga, student'] }],
+    figures: [{ value: '5', label: 'pages' }],
+    stack: ['Next.js', 'Vercel'],
+    link: { href: 'https://agstudent.vercel.app/', label: 'agstudent.vercel.app' },
   },
   {
-    id: 'address-app', title: 'Address mapping app', kind: 'Mobile app',
-    text: 'Features for a mobile app mapping commercial and residential addresses in Mongolia: Firebase sign-in for the admin accounts and an image-upload flow with React Dropzone.',
-    details: [{ label: 'Role', items: ['Software development intern'] }, { label: 'When', items: ['June – August 2022'] }, { label: 'At', items: ['Pinecone Solutions'] }],
-    figures: [{ value: '1,000+', label: 'addresses' }, { value: '100', label: 'uploads a day' }],
-    stack: ['React', 'Java', 'CSS', 'Firebase', 'React Dropzone'],
-  },
-  {
-    id: 'mongolian-talent', title: 'Mongolian Identity – Mongolian Talent', kind: 'Community program',
-    text: 'A program I started at the cultural center, where high schoolers explore Mongolian culture and present what they find.',
-    details: [{ label: 'Role', items: ['Started the program'] }, { label: 'For', items: ['Mongolian Cultural Center in North America'] }],
-    figures: [{ value: '12', label: 'high schoolers' }],
-  },
-  {
-    id: 'campus-tours', title: 'Tech campus tours', kind: 'Community program',
-    text: 'Visits to Amazon, Microsoft, Expedia, Meta, Boeing, and Blue Origin for the center’s students and families. I managed the communications and the documentation.',
-    details: [{ label: 'Role', items: ['Organizer'] }, { label: 'For', items: ['Mongolian Cultural Center in North America'] }],
-    figures: [{ value: '6', label: 'companies' }, { value: '88', label: 'on the Amazon tour' }],
+    id: 'mm-portfolio', title: 'Munkh-Orgil Munkhtulga portfolio', kind: 'Student portfolio', image: '/projects/mm.webp',
+    text: 'A portfolio for Munkh-Orgil, a physics olympiad student from Ulaanbaatar: “A mind in motion.” It walks through his competitions, research, service and life, with a gallery of his original certificates.',
+    details: [{ label: 'Role', items: ['Design', 'Development'] }, { label: 'For', items: ['Munkh-Orgil Munkhtulga, student'] }],
+    figures: [{ value: '6', label: 'pages' }, { value: '24', label: 'certificates shown' }],
+    stack: ['Next.js', 'Vercel'],
+    link: { href: 'https://mmstudent.vercel.app/', label: 'mmstudent.vercel.app' },
   },
 ]

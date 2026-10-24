@@ -1,50 +1,94 @@
-/* The projects scroller: a tall section the page stage scrolls through, holding one sticky view */
-.projects {position:relative}
-.projects-stage {position:sticky;top:0;height:var(--stage-h);overflow:hidden;outline:none}
-.projects-stage:focus-visible {outline:2px solid var(--ink);outline-offset:-2px}
-.projects-title {position:absolute;left:0;top:0;font-size:clamp(34px,3.4vw,52px)}
-.projects-hint {position:absolute;right:0;top:12px;font-size:13px;color:var(--muted)}
-.projects-label {font-size:12px;color:var(--muted);margin-bottom:6px}
+/* The projects canvas: a window between the corner bands onto a pattern of tiles that repeats in every direction.
+   Its edges fade into the page, so tiles drift in and out rather than being cut off. */
+.stage:has(.projects) {overflow:hidden}
+.projects {position:relative;height:100%;min-height:0}
+.project-field {position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none;color:var(--ink);
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent),linear-gradient(transparent,#000 9%,#000 91%,transparent);
+  -webkit-mask-composite:source-in;mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent),linear-gradient(transparent,#000 9%,#000 91%,transparent);mask-composite:intersect}
+.project-field:active {cursor:grabbing}
+.project-links {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.project-plane {position:absolute;left:0;top:0;will-change:transform}
 
-/* left: the details of the project in view */
-.projects-meta {position:absolute;left:0;top:28%;width:24%;display:grid;gap:20px;font-size:14px;line-height:1.5}
+/* a tile: the site in colour through a screen of dots, its name and number beneath; near the pointer it shows sharp */
+.project-tile {position:absolute;display:grid;gap:12px;width:calc(320px * var(--tile-scale));padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
+.project-tile-pic {position:relative;display:block;aspect-ratio:8 / 5;overflow:hidden;background:var(--paper);outline:1px solid var(--line);outline-offset:0;transition:outline-color .3s,transform .45s var(--ease)}
+.project-tile-pic img {position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;transition:opacity .35s ease}
+.pic-dots {--dot:4px;-webkit-mask-image:radial-gradient(circle,#000 66%,transparent 70%);-webkit-mask-size:var(--dot) var(--dot);mask-image:radial-gradient(circle,#000 66%,transparent 70%);mask-size:var(--dot) var(--dot)}
+.pic-sharp {opacity:0}
+.project-tile:hover .pic-sharp,.project-tile.is-near .pic-sharp,.project-tile:focus-visible .pic-sharp {opacity:1}
+.project-tile:hover .project-tile-pic,.project-tile.is-near .project-tile-pic,.project-tile:focus-visible .project-tile-pic {outline-color:var(--ink);transform:translateY(-3px)}
+.project-tile:focus-visible {outline:none}
+.project-tile-kind {position:absolute;left:8px;bottom:8px;padding:4px 8px;font-size:11px;background:var(--paper);color:var(--muted)}
+.project-tile-caption {display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.project-tile-title {font-size:max(12px,calc(19px * var(--tile-scale)));font-weight:500;letter-spacing:-.02em;line-height:1.2}
+.project-tile-n {font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-/* middle: the cards, travelling along a diagonal */
-.projects-cards {position:absolute;inset:0;pointer-events:none}
-.project-card {position:absolute;left:50%;top:50%;width:clamp(270px,25%,360px);aspect-ratio:5 / 4;display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:6px;background:var(--soft);will-change:transform}
-.project-card-top {display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.project-card-title {font-size:clamp(24px,2.1vw,32px);font-weight:500;letter-spacing:-.03em;line-height:1.08;margin-top:auto}
-.project-card-figures {display:flex;flex-wrap:wrap;gap:8px 32px}
-.project-card-figures > div {display:flex;flex-direction:column-reverse}
-.project-card-figures dt {font-size:12px;color:var(--muted)}
-.project-card-figures dd {font-size:clamp(28px,2.6vw,38px);font-weight:500;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
-.project-card-link {display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:13px;font-weight:600;border-bottom:1px solid currentColor;padding-block:3px}
-.project-card.is-active .project-card-link {pointer-events:auto}
-.project-card-link:hover {color:var(--muted)}
+.projects-title {position:absolute;left:0;top:0;z-index:2;font-size:clamp(26px,2.4vw,36px);font-weight:500;letter-spacing:-.04em;pointer-events:none;text-shadow:0 0 12px var(--paper),0 0 24px var(--paper)}
+/* sits low, between the bottom corners */
+.projects-hint {position:fixed;left:50%;bottom:calc(var(--edge) + 6px);z-index:20;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.projects-label {font-size:12px;color:var(--muted)}
 
-/* right: the descriptions, rolling with the cards */
-.projects-text {position:absolute;left:74%;top:8%;width:26%;height:80%;overflow:hidden;pointer-events:none}
-.projects-text article {position:absolute;left:0;top:50%;width:100%;font-size:14px;line-height:1.6;will-change:transform}
-.projects-text-title {font-size:20px;font-weight:500;letter-spacing:-.02em;line-height:1.2}
-.projects-dash {margin-block:10px;color:var(--muted)}
-.projects-text article p:last-child {color:var(--muted)}
+/* the line of stations along the bottom, one per project, like a transit map */
+/* low on the screen, between the bottom corners, just above the hint */
+.project-line {position:fixed;left:50%;bottom:calc(var(--edge) + 32px);z-index:3;transform:translateX(-50%);width:min(720px,100% - 2 * var(--edge))}
+.project-line ol {position:relative;display:flex;justify-content:space-between;list-style:none;margin:0;padding:0}
+/* the track runs between the first and last stations */
+.project-line ol::before {content:'';position:absolute;left:16.6%;right:16.6%;top:13px;height:3px;border-radius:2px;background:var(--line)}
+.project-line li {flex:1;display:flex;justify-content:center}
+.project-line button {display:grid;justify-items:center;gap:8px;padding:6px 4px;border:0;background:none;color:var(--muted);font-size:12px;line-height:1.3;text-align:center;cursor:pointer;transition:color .3s}
+.project-line button:hover,.project-line button.is-here {color:var(--ink)}
+.station {position:relative;width:14px;height:14px;border-radius:50%;background:var(--paper);border:3px solid var(--muted);transition:border-color .3s,transform .45s var(--ease)}
+.project-line button:hover .station {border-color:var(--ink)}
+/* the one in view: a filled station, with a ring that keeps pulsing out from it */
+.project-line button.is-here .station {border-color:var(--ink);background:var(--ink);transform:scale(1.15)}
+.project-line button.is-here .station::after {content:'';position:absolute;inset:-6px;border-radius:50%;border:1px solid var(--ink);animation:station-pulse 1.8s ease-out infinite}
+@keyframes station-pulse {from {transform:scale(.6);opacity:.9} to {transform:scale(1.6);opacity:0}}
+.station-name {display:grid;gap:2px;max-width:18ch}
+.station-n {font-variant-numeric:tabular-nums;opacity:.7}
+.project-line-now {display:none}
 
-/* the rolling counter and the steps */
-.projects-count {position:absolute;left:0;bottom:0;display:flex;align-items:flex-start;gap:14px}
-.projects-count .projects-label {padding-top:14px}
-.projects-number {font-size:clamp(64px,8vw,120px);font-weight:500;letter-spacing:-.04em}
-.projects-steps {position:absolute;right:0;bottom:0;display:flex;gap:24px;font-size:13px}
-.projects-steps button {min-height:44px;padding:0;border:0;background:none;color:inherit}
-.projects-steps button:hover {color:var(--muted)}
+/* opening a project: the canvas steps back, rings of dots spin out from the middle, and the project pops up there */
+.projects.is-showing .project-field {filter:blur(3px);opacity:.35;transition:filter .5s,opacity .5s}
+.project-field {transition:filter .4s,opacity .4s}
+.project-burst {position:absolute;left:50%;top:50%;z-index:6;width:0;height:0;pointer-events:none}
+/* the burst waits for the project to reach the middle (or starts at once, when a wave has carried it there), then spins out as it opens (it takes priority over the
+   page's entrance animation, which would otherwise reach these dots too) */
+.project-burst i {position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--ink);opacity:0;animation:burst 1.1s cubic-bezier(.2,.7,.2,1) calc(var(--wait, .38s) + var(--d)) both !important}
+@keyframes burst {
+  0% {opacity:0;transform:rotate(var(--a)) translateX(0) scale(.4)}
+  20% {opacity:1}
+  100% {opacity:0;transform:rotate(calc(var(--a) + 160deg)) translateX(calc(var(--r) * 2.2)) scale(1.4)}
+}
+.project-detail {position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);width:min(720px,100%);max-height:100%;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px;border-radius:10px;background:var(--paper);border:1px solid var(--line);box-shadow:0 30px 80px rgb(0 0 0 / .45);animation:detail-pop .65s cubic-bezier(.2,1.3,.4,1) .12s both}
+@keyframes detail-pop {from {opacity:0;transform:translate(-50%,-50%) scale(.55);filter:blur(6px)} 60% {opacity:1;filter:blur(0)}}
+.project-detail-shot {width:100%;height:auto;aspect-ratio:8 / 5;object-fit:cover;object-position:top;border-radius:6px;align-self:start}
+.project-detail-body {display:grid;gap:12px;align-content:start}
+.project-detail h2 {font-size:clamp(22px,2vw,28px);font-weight:500;letter-spacing:-.03em;line-height:1.1;padding-right:30px}
+.project-detail-text {font-size:13px;line-height:1.65;color:var(--muted)}
+.project-detail-figures {display:flex;flex-wrap:wrap;gap:6px 32px}
+.project-detail-figures > div {display:flex;flex-direction:column-reverse}
+.project-detail-figures dt,.project-detail-meta dt {font-size:12px;color:var(--muted)}
+.project-detail-figures dd {font-size:28px;font-weight:500;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.project-detail-meta {display:grid;gap:8px;font-size:13px}
+.project-detail-meta dd {margin-top:2px}
+.project-detail .text-link {justify-self:start}
+.project-detail-close {position:absolute;right:14px;top:14px;z-index:1;width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--soft);color:inherit}
 
-@media (max-width:767px) {
-  .projects-hint,.projects-meta {display:none}
-  /* the cards travel in their own window under the title, so the next one never covers the text */
-  .projects-cards {top:64px;bottom:auto;height:calc(56% - 64px);overflow:hidden}
-  .project-card {width:min(84%,330px);padding:20px}
-  .projects-text {left:0;top:58%;width:100%;height:27%;text-align:left}
-  .projects-text article {font-size:13px}
-  .projects-text-title {display:none}
-  .projects-count {left:0}
-  .projects-number {font-size:64px}
+@media (max-width:700px) {
+  /* above the bottom corners on a phone */
+  .projects-hint {bottom:calc(var(--edge) + 64px)}
+  .project-line {bottom:calc(var(--edge) + 80px)}
+  /* the stations show just their numbers, with the name of the one in view centred beneath them */
+  .project-line button {gap:4px}
+  .station-name {font-size:0}
+  .station-n {font-size:11px}
+  .project-line-now {display:block;margin-top:2px;text-align:center;font-size:12px;color:var(--ink)}
+  /* the tiles fade out before they reach the stations */
+  .project-field {-webkit-mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent),linear-gradient(transparent,#000 9%,#000 66%,transparent 80%);mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent),linear-gradient(transparent,#000 9%,#000 66%,transparent 80%)}
+  /* smaller tiles, so all three projects fit on the screen */
+  .project-tile {gap:6px}
+  .pic-dots {--dot:3px}
+  .project-tile-kind {left:4px;bottom:4px;padding:2px 5px;font-size:9px}
+  .project-tile-n {font-size:10px}
+  .project-detail {grid-template-columns:1fr;width:100%;max-height:100%;padding:16px;gap:14px}
 }

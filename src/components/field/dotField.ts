@@ -4,16 +4,17 @@ import { cells, type FieldImage, type FieldMark } from './field'
 // cell, and one pass per frame moves and paints them all. The pointer pushes dots away and blooms them, and a
 // slow wave nudges the home cells so the field never sits frozen. An image can be
 // set into the field: under it each dot grows with the picture's tone, like a halftone screen, and the dots
-// keep their size as the pointer scatters them. A colour wave turns each dot it passes into a circle holding
-// its piece of the photo, and the next wave turns them back; near the pointer the image shows the other
+// keep their size as the pointer scatters them. A colour wave turns each dot it passes into a circle
+// holding its piece of the photo, and the next wave turns them back; near the pointer the image shows the other
 // way round, in colour while it is black and white and in black and white while it is in colour. A wordmark can
 // be set into the field too: its dots gather from across the screen into the letters, and a soft highlight
 // sweeps through them every few seconds. A page change runs as a flow: a strong ring whose radius the page sets
 // each frame, out from a click to the far side and back; the portrait and wordmark only show beyond its front.
 export const FIELD_DEFAULTS = {
-  gap: 6,            // grid spacing, css px
+  gap: 6,            // grid spacing, css px; --field-gap overrides it, so small screens get a finer grid
   dot: .42,          // resting radius
   maxDots: 40000,    // spacing widens past this so big screens stay at 60fps
+  density: 1,        // how many times as many dots: spacing shrinks by its square root, the cap grows with it
   restAlpha: .2,
   spring: .055,      // pull back toward home, per 60Hz step
   friction: .82,     // velocity kept per step
@@ -22,7 +23,7 @@ export const FIELD_DEFAULTS = {
   swell: 1.8,        // how much a fully bloomed dot grows (× radius)
   bloom: 1,          // 0 = displacement only, no swell or darkening
   jitter: .7,        // 0 = every dot pops alike; higher = each dot's swell, reach and timing vary more
-  ringSpeed: 620,    // px/s
+  ringSpeed: 775,    // px/s
   ringWidth: 46,
   ringPush: 2.4,
   breathe: 1.6,      // idle wave amplitude, px
@@ -86,6 +87,7 @@ export class DotField {
   private detail: HTMLCanvasElement | null = null  // the colour circles, painted once per layout
   private detailX = 0
   private detailY = 0
+  private covered = 0   // how many dots the portrait covers
   private tiles: number[][] = Array.from({ length: TILE_LEVELS }, () => [])
   private hold: { x: number, y: number } | null = null  // where a wave was sent; the lens waits until the pointer leaves it
   private hx = new Float32Array(0)
@@ -105,9 +107,9 @@ export class DotField {
   private aim = new Float32Array(0)    // 1 once a colour wave has passed the dot, 0 once a plain one has
   private hue = new Float32Array(0)    // how far each dot has turned to colour, easing toward aim
   private peek = new Float32Array(0)   // how close the pointer is, easing; flips the dot's look
+  private mark = new Float32Array(0)   // how much of the wordmark covers each dot, 0 to 1
   private sx = new Float32Array(0)     // how far each dot is pushed off its breathing home
   private sy = new Float32Array(0)
-  private mark = new Float32Array(0)   // how much of the wordmark covers each dot, 0 to 1
   private wait = new Float32Array(0)   // seconds a wordmark dot holds before it flies home
 
   constructor(private canvas: HTMLCanvasElement, options: Partial<FieldOptions> = {}) {
@@ -129,7 +131,9 @@ export class DotField {
     this.w = w; this.h = h
     this.canvas.width = Math.round(w * dpr); this.canvas.height = Math.round(h * dpr)
     // the grid sits on whole device pixels, so the colour picture's cells meet without seams
-    const gap = this.gap = Math.ceil(Math.max(o.gap, Math.sqrt(w * h / o.maxDots)) * dpr) / dpr
+    const cssGap = parseFloat(getComputedStyle(this.canvas).getPropertyValue('--field-gap'))
+    const base = (cssGap > 0 ? cssGap : o.gap) / Math.sqrt(o.density), cap = o.maxDots * o.density
+    const gap = this.gap = Math.max(1, Math.ceil(Math.max(base, Math.sqrt(w * h / cap)) * dpr)) / dpr
     const cols = this.cols = Math.ceil(w / gap) + 1, rows = this.rows = Math.ceil(h / gap) + 1, n = this.n = cols * rows
     const ox = this.ox = Math.round((w - (cols - 1) * gap) / 2 * dpr) / dpr, oy = this.oy = Math.round((h - (rows - 1) * gap) / 2 * dpr) / dpr
     for (const k of ['hx', 'hy', 'x', 'y', 'vx', 'vy', 'bloom', 'gain', 'reach', 'rate', 'curve', 'lum', 'cover', 'tone', 'aim', 'hue', 'peek', 'sx', 'sy', 'mark', 'wait'] as const) this[k] = new Float32Array(n)
@@ -210,6 +214,8 @@ export class DotField {
       })
       this.paintDetail(pic.image, left, top, dw, dh)
     }
+    this.covered = 0
+    for (let i = 0; i < this.n; i++) if (this.cover[i]) this.covered++
     this.shade()
   }
 
@@ -321,9 +327,12 @@ export class DotField {
 
   tick(dt: number) {
     if (this.o.still() || !this.n) return
-    this.acc = Math.min(this.acc + dt, STEP * 4)
+    // at most two steps a frame, so one slow frame does not make the next one slower
+    this.acc = Math.min(this.acc + dt, STEP * 2)
     this.since += dt
     const idle = !this.rings.length && !this.flow && this.time - this.lastActive > 1.5
+    // with no portrait or wordmark to breathe, a settled field looks the same every frame: stop drawing it
+    if (idle && !this.pres && !this.presAim) return
     if (idle && this.since < 1 / this.o.idleFps) return
     this.since = 0
     let ran = false
@@ -333,7 +342,7 @@ export class DotField {
 
   private step() {
     const o = this.o, t = this.time += STEP, p = this.ptr
-    const { hx, hy, x, y, vx, vy, sx, sy, bloom, gain, reach, rate, curve, cover, aim, hue, peek, wait } = this
+    const { hx, hy, x, y, vx, vy, sx, sy, bloom, gain, reach, rate, curve, cover, aim, hue, peek, mark, wait } = this
     const far = Math.hypot(this.w, this.h)
     for (const r of this.rings) r.r += o.ringSpeed * STEP
     this.rings = this.rings.filter(r => r.r < far)
@@ -355,8 +364,11 @@ export class DotField {
     for (let i = 0; i < this.n; i++) {
       if (wait[i] > 0) { wait[i] = Math.max(0, wait[i] - STEP); turning = true; continue }
       // the breathing: two slow sines move the home cell a couple of px
-      const homeX = hx[i] + Math.sin(hy[i] * .011 + t * .8) * o.breathe
-      const homeY = hy[i] + Math.cos(hx[i] * .009 + t * .65) * o.breathe
+      // only the portrait and the wordmark breathe: plain background dots are smaller than a pixel, and drifting
+      // by fractions of one makes the whole grid shimmer
+      const br = cover[i] || mark[i] ? o.breathe : 0
+      const homeX = hx[i] + Math.sin(hy[i] * .011 + t * .8) * br
+      const homeY = hy[i] + Math.cos(hx[i] * .009 + t * .65) * br
       let ax = (homeX - x[i]) * o.spring, ay = (homeY - y[i]) * o.spring, near = 0, look = 0
 
       if (p.on) {
@@ -364,8 +376,8 @@ export class DotField {
         const d = dx > R || dx < -R || dy > R || dy < -R ? R : Math.hypot(dx, dy)
         if (d < R && d > .01) {
           near = 1 - d / R
-          // the colour picture holds together more, so the face stays readable under the pointer
-          const f = near * near * shove * (cover[i] ? 1 - .65 * hue[i] : 1)
+          // the colour picture gives way like the rest of the field, its circles carrying the photo with them
+          const f = near * near * shove
           ax += dx / d * f; ay += dy / d * f
         }
         // the spotlight measures from the home cell, so it holds steady while the dots scatter
@@ -401,7 +413,7 @@ export class DotField {
       const want = near > 0 ? Math.min(1, Math.pow(near, curve[i]) * gain[i]) : 0
       if (want || bloom[i] > .001) bloom[i] += (want - bloom[i]) * rate[i]; else bloom[i] = 0
       if (hue[i] !== aim[i]) {
-        const next = hue[i] + (aim[i] - hue[i]) * .09
+        const next = hue[i] + (aim[i] - hue[i]) * .11
         hue[i] = Math.abs(aim[i] - next) < .004 ? aim[i] : next
         turning = true
       }
@@ -456,7 +468,8 @@ export class DotField {
       const r = (v.dot + t * (full - v.dot)) * (1 - m) + v.dot * b * v.swell
       // a dot's brightness follows its size; on a dark page more gently, so mid-tones stay mid-grey
       const k = Math.round(Math.min(1, Math.max(b, t * (v.invert ? 1.25 : 1.8))) * (BUCKETS - 1))
-      if (r < 1) { paths[k].rect(x[i] - r, y[i] - r, r * 2, r * 2); continue }
+      // sub-pixel dots draw as squares on whole device pixels, so a resting grid stays crisp instead of blurring
+      if (r < 1) { paths[k].rect(Math.round((x[i] - r) * dpr) / dpr, Math.round((y[i] - r) * dpr) / dpr, Math.max(1 / dpr, Math.round(r * 2 * dpr) / dpr), Math.max(1 / dpr, Math.round(r * 2 * dpr) / dpr)); continue }
       paths[k].moveTo(x[i] + r, y[i])
       paths[k].arc(x[i], y[i], r, 0, Math.PI * 2)
     }
@@ -465,14 +478,49 @@ export class DotField {
       g.fill(path)
     })
     if (detail) {
-      // cells leave out the breathing and land on whole pixels, so a still picture is seamless and sharp
-      const cell = Math.round(gap * dpr), half = gap / 2, snap = (n: number) => Math.round(n * dpr) / dpr
+      // Colour circles the pointer, a wave or a flow is pushing move with their dots, each carrying its piece of the
+      // photo. The rest sit on their home cells, on whole pixels, and are drawn a level at a time as the whole
+      // colour picture seen through their cells: a draw per level instead of one per dot, so a phone keeps up.
+      const cell = Math.round(gap * dpr) / dpr, cellPx = Math.round(gap * dpr), half = gap / 2, snap = (n: number) => Math.round(n * dpr) / dpr
+      const dx0 = snap(this.detailX), dy0 = snap(this.detailY), dw = detail.width / dpr, dh = detail.height / dpr
+      const settle = .6  // css px a circle may be off home and still draw at home
       tiles.forEach((list, level) => {
+        if (!list.length) return
         g.globalAlpha = (level + 1) / TILE_LEVELS
+        let home: Path2D | null = null, settled = 0
+        // moving circles are grouped by how far they have moved, to the nearest css px: each group is the picture
+        // drawn once, shifted by that much, through its circles' home cells. A few groups have a single circle;
+        // those are cheaper drawn on their own.
+        const moved = new Map<number, number[]>()
         for (const i of list) {
-          g.drawImage(detail, Math.round((hx[i] - half - this.detailX) * dpr), Math.round((hy[i] - half - this.detailY) * dpr), cell, cell,
-            snap(hx[i] + sx[i] - half), snap(hy[i] + sy[i] - half), cell / dpr, cell / dpr)
+          if (Math.abs(sx[i]) < settle && Math.abs(sy[i]) < settle) {
+            (home ??= new Path2D()).rect(snap(hx[i] - half), snap(hy[i] - half), cell, cell)
+            settled++
+            continue
+          }
+          const key = (Math.round(sx[i]) + 512) * 1024 + Math.round(sy[i]) + 512
+          const group = moved.get(key)
+          if (group) group.push(i); else moved.set(key, [i])
         }
+        for (const [key, group] of moved) {
+          const ox = Math.floor(key / 1024) - 512, oy = key % 1024 - 512
+          if (group.length < 4) {
+            for (const i of group) g.drawImage(detail, Math.round((hx[i] - half - this.detailX) * dpr), Math.round((hy[i] - half - this.detailY) * dpr), cellPx, cellPx,
+              snap(hx[i] + ox - half), snap(hy[i] + oy - half), cell, cell)
+            continue
+          }
+          const cells = new Path2D()
+          for (const i of group) cells.rect(snap(hx[i] + ox - half), snap(hy[i] + oy - half), cell, cell)
+          g.save(); g.clip(cells)
+          g.drawImage(detail, dx0 + ox, dy0 + oy, dw, dh)
+          g.restore()
+        }
+        if (!home) return
+        // every covered dot settled at this level: the picture needs no clip
+        const whole = settled === this.covered
+        if (!whole) { g.save(); g.clip(home) }
+        g.drawImage(detail, dx0, dy0, dw, dh)
+        if (!whole) g.restore()
       })
     }
     g.globalAlpha = 1

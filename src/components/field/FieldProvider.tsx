@@ -7,8 +7,8 @@ import { DotField, FLOW_EDGE } from './dotField'
 
 // A page change is a flow: a wave runs from the click to the far side of the screen, speeding up and washing the
 // page away, bounces, and runs back to the click, slowing down and bringing the new page in behind it
-const OUT = 600   // ms
-const BACK = 800  // ms
+const OUT = 480   // ms
+const BACK = 640  // ms
 const easeIn = (u: number) => u * u
 const easeOut = (u: number) => 1 - (1 - u) ** 3
 
@@ -45,7 +45,9 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     const el = canvas.current!
     const html = document.documentElement
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const f = field.current = new DotField(el, { still: () => reduce.matches })
+    // 1.25 times the dots of the stylesheet's spacing (--field-gap); ?dots=2 previews another density
+    const density = Math.min(20, Math.max(1, Number(new URLSearchParams(location.search).get('dots')) || 1.25))
+    const f = field.current = new DotField(el, { still: () => reduce.matches, density })
     const portrait = new Image()
     portrait.src = '/portrait-cutout.webp'
     const ready = Promise.all([portrait.decode().catch(() => {}), document.fonts.ready])
@@ -69,6 +71,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     // a page reached by loading or by the browser's back and forward: the name gathers, the portrait fades
     scene.current = () => ready.then(() => {
       if (disposed) return
+      watch()
       const home = place()
       f.show(home)
       if (home) f.assemble()
@@ -77,6 +80,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     arrive.current = () => ready.then(() => {
       const fl = flow.current
       if (disposed || !fl) return
+      watch()
       f.show(place(), true)
       fl.phase = 'back'
       fl.start = performance.now()
@@ -116,11 +120,14 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     const move = (e: PointerEvent) => f.pointer(...local(e), e.timeStamp)
     const leave = () => f.leave()
     const click = (e: MouseEvent) => {
-      if (flow.current || (e.target as Element).closest('a, button, summary, input, textarea, label, .curious-mind')) return
+      if (flow.current || (e.target as Element).closest('a, button, summary, input, textarea, label, .curious-mind, .project-field, .project-detail')) return
       if (portraitBox.current) setColored(f.wave(...local(e)))
       else f.ripple(...local(e))
     }
     const resize = () => { if (!disposed && !flow.current) place() }
+    // the portrait's box can change without the window changing (a phone sizes it to the space under the words)
+    const boxes = new ResizeObserver(resize)
+    const watch = () => { boxes.disconnect(); const frame = document.querySelector('.hero-portrait'); if (frame) boxes.observe(frame) }
     const refresh = () => f.refresh()
     window.addEventListener('pointermove', move, { passive: true })
     window.addEventListener('click', click)
@@ -144,6 +151,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
       disposed = true
       cancelAnimationFrame(raf)
       themes.disconnect()
+      boxes.disconnect()
       window.removeEventListener('pointermove', move)
       window.removeEventListener('click', click)
       window.removeEventListener('blur', leave)
