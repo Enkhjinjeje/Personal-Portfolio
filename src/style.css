@@ -12,11 +12,10 @@
 :root {--paper:#0e0e0f;--ink:#f1f1f1;--muted:#8e8e90;--line:rgb(255 255 255 / .12);--soft:#1a1a1c;--field-rest-alpha:.16;--field-dot:.42;--field-swell:1.8;--field-push:1.1;--field-invert:1;color-scheme:dark}
 :root[data-theme="light"] {--paper:#e8e7e2;--ink:#1c1c1a;--muted:#626262;--line:rgb(0 0 0 / .12);--soft:#dedcd5;--field-rest-alpha:.4;--field-dot:.5;--field-swell:2.2;--field-push:1.5;--field-invert:0;color-scheme:light}
 
-/* The dot grid's spacing follows the screen, so the portrait keeps about as many dots on a phone as on a laptop;
-   the denser background rests a little fainter to look the same */
+/* The dot grid's spacing follows the screen, so the portrait keeps plenty of dots on a smaller screen. Phones share
+   the tablet spacing rather than going finer: about half the dots of a 3px grid, so the field keeps its frame rate. */
 :root {--field-gap:6}
 @media (max-width:1000px) {:root {--field-gap:4.5}}
-@media (max-width:700px) {:root {--field-gap:3}:root:not([data-theme="light"]) {--field-rest-alpha:.1}:root[data-theme="light"] {--field-rest-alpha:.26}}
 
 /* the frame: the gap to the screen's edge, and the bands the corner links sit in */
 :root {--edge:clamp(20px,3vw,44px);--band:120px;--stage-h:calc(100svh - 2 * var(--band));--ease:cubic-bezier(.16,1,.3,1)}
