@@ -64,7 +64,8 @@ export default function ProjectField() {
   // each frame: the canvas glides toward its target, the plane shifts by the offset modulo one block so it wraps,
   // the links are drawn between the tiles where they now are, and the station of the project nearest the middle lights
   useEffect(() => {
-    const el = view.current!, p = pan.current, g = links.current!.getContext('2d')!
+    // held here, not read from the ref each frame: leaving the page clears the ref a frame before this effect stops
+    const el = view.current!, sheet = plane.current!, p = pan.current, g = links.current!.getContext('2d')!
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const bw = layout.block.w * scale, bh = layout.block.h * scale
     if (started.current !== layout) {
@@ -89,7 +90,7 @@ export default function ProjectField() {
         p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k
       }
       const ox = ((p.x % bw) + bw) % bw - bw, oy = ((p.y % bh) + bh) % bh - bh
-      plane.current!.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`
+      sheet.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`
 
       // the station: whichever project's nearest copy is closest to the middle
       const { w, h } = size.current

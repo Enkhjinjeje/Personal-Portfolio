@@ -48,6 +48,16 @@ summary::-webkit-details-marker {display:none}
 .text-link {font-size:14px;font-weight:600;padding-block:5px;border-bottom:1px solid currentColor;line-height:1.7}
 .text-link:hover {color:var(--color-secondary)}
 
+/* ---- Loader ---- the page's own ground and three dots, until the field has what it needs; the entrances start as
+   it lifts. Without script it never shows. */
+.loader {position:fixed;inset:0;z-index:50;display:none;place-items:center;grid-auto-flow:column;place-content:center;gap:10px;background:var(--paper);transition:opacity .6s var(--ease),visibility .6s}
+.js .loader {display:grid}
+.is-loaded .loader {opacity:0;visibility:hidden;pointer-events:none}
+.loader i {width:6px;height:6px;border-radius:50%;background:var(--ink);animation:loading 1.2s ease-in-out infinite both}
+.loader i:nth-child(2) {animation-delay:.15s}
+.loader i:nth-child(3) {animation-delay:.3s}
+@keyframes loading {0%,100% {opacity:.2;transform:scale(.7)}40% {opacity:1;transform:scale(1)}}
+
 /* ---- Field ---- fixed behind every page */
 .field {position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
 .field canvas {position:absolute;top:0;left:0;display:block}
@@ -93,7 +103,7 @@ summary::-webkit-details-marker {display:none}
 /* on the first page each part settles into place, from just above, so it never pushes past the stage's foot;
    after that pages arrive with the flow */
 @keyframes rise {from {opacity:0;transform:translateY(-14px)}}
-.js:not(.flowed) .page:not(.home) > *,.js:not(.flowed) .page:not(.home) > * > * {animation:rise .8s var(--ease) both}
+.is-loaded:not(.flowed) .page:not(.home) > *,.is-loaded:not(.flowed) .page:not(.home) > * > * {animation:rise .8s var(--ease) both}
 .js .page > :nth-child(2),.js .page > * > :nth-child(2) {animation-delay:.06s}
 .js .page > :nth-child(3),.js .page > * > :nth-child(3) {animation-delay:.12s}
 .js .page > :nth-child(4),.js .page > * > :nth-child(4) {animation-delay:.18s}
@@ -112,8 +122,8 @@ summary::-webkit-details-marker {display:none}
 /* the hint speaks to how the visitor points: a cursor, or a finger */
 .color-hint .on-touch {display:none}
 @media (hover:none) {.color-hint .on-mouse {display:none}.color-hint .on-touch {display:block;color:var(--ink)}}
-.js:not(.flowed) .hero-line {animation:rise .9s var(--ease) 1s both}
-.js:not(.flowed) .color-hint {animation:rise .9s var(--ease) 1.2s both}
+.is-loaded:not(.flowed) .hero-line {animation:rise .9s var(--ease) 1s both}
+.is-loaded:not(.flowed) .color-hint {animation:rise .9s var(--ease) 1.2s both}
 /* stands at the bottom of the screen between the right-hand corners */
 .hero-portrait {position:fixed;bottom:0;left:64%;height:calc(100svh - var(--band) + 12px);aspect-ratio:3 / 4;transform:translateX(-50%);pointer-events:none}
 

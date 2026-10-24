@@ -30,9 +30,15 @@ const themeScript = `document.documentElement.classList.add('js');try{const t=lo
 // One screen, no page scroll: the field behind, the four pages in the corners, the current page between them
 export default function RootLayout({ children }: { children: ReactNode }) {
   return <html lang="en" className={manrope.variable} suppressHydrationWarning>
-    <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      {/* the field loads the portrait from script; fetch it with the page instead of after the scripts have run */}
+      <link rel="preload" as="image" href="/portrait-cutout.webp" type="image/webp" fetchPriority="high" />
+    </head>
     {/* browser extensions (Grammarly, ColorZilla and others) add attributes to <body> before React loads */}
     <body suppressHydrationWarning>
+      {/* covers the page until the fonts, the portrait and the page's images are in; only shown when script runs */}
+      <div className="loader" aria-hidden="true"><i /><i /><i /></div>
       <FieldProvider>
         <a className="skip-link" href="#main">Skip to content</a>
         <CornerNav />

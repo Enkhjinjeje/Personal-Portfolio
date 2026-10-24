@@ -9,6 +9,7 @@ import { DotField, FLOW_EDGE } from './dotField'
 // page away, bounces, and runs back to the click, slowing down and bringing the new page in behind it
 const OUT = 480   // ms
 const BACK = 640  // ms
+const LOAD_CAP = 10000  // ms the loader waits at most
 const easeIn = (u: number) => u * u
 const easeOut = (u: number) => 1 - (1 - u) ** 3
 
@@ -50,8 +51,14 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     const f = field.current = new DotField(el, { still: () => reduce.matches, density })
     const portrait = new Image()
     portrait.src = '/portrait-cutout.webp'
-    const ready = Promise.all([portrait.decode().catch(() => {}), document.fonts.ready])
+    // The loader lifts once the fonts, the portrait and the page's own images are in, or after LOAD_CAP on a very
+    // slow network; a portrait still on its way then joins the field whenever it lands
+    const pictured = portrait.decode().catch(() => {})
+    const loaded = new Promise<void>(done => document.readyState === 'complete' ? done() : window.addEventListener('load', () => done(), { once: true }))
+    const ready = Promise.race([Promise.all([document.fonts.ready, pictured, loaded]), new Promise(done => setTimeout(done, LOAD_CAP))])
+      .then(() => html.classList.add('is-loaded'))
     let disposed = false
+    pictured.then(() => { if (!disposed && !flow.current) place() })
 
     // set the current page's portrait and wordmark into the field; returns whether the page has a portrait
     const place = () => {

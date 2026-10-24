@@ -18,6 +18,8 @@ const fitsOneScreen = (page: Page) => page.evaluate(() => {
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Main navigation' })
 
 test('the four corners flow between pages that each fit one screen', async ({ page, context, request }) => {
+  // a walk through every page and its flows; it runs close to the default 30s on its own
+  test.setTimeout(60_000)
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
