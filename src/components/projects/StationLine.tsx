@@ -13,7 +13,5 @@ export default function StationLine({ here, go }: { here: number, go(i: number):
         </button>
       </li>)}
     </ol>
-    {/* a phone has room under the stations for one name: the one in view */}
-    <p className="project-line-now" aria-hidden="true">{projects[here].title}</p>
   </nav>
 }
