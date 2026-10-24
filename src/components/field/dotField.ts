@@ -1,3 +1,5 @@
+import { cells, type FieldImage, type FieldMark } from './field'
+
 // Dot-field background, ported from the dualscroll component: every dot is a damped spring tied to its grid
 // cell, and one pass per frame moves and paints them all. The pointer pushes dots away and blooms them, and a
 // slow wave nudges the home cells so the field never sits frozen. An image can be
@@ -6,7 +8,8 @@
 // its piece of the photo, and the next wave turns them back; near the pointer the image shows the other
 // way round, in colour while it is black and white and in black and white while it is in colour. A wordmark can
 // be set into the field too: its dots gather from across the screen into the letters, and a soft highlight
-// sweeps through them every few seconds.
+// sweeps through them every few seconds. A page change runs as a flow: a strong ring whose radius the page sets
+// each frame, out from a click to the far side and back; the portrait and wordmark only show beyond its front.
 export const FIELD_DEFAULTS = {
   gap: 6,            // grid spacing, css px
   dot: .42,          // resting radius
@@ -44,11 +47,14 @@ const MARK_TONE = .6     // a wordmark dot's size at rest, as a share of a full 
 const SHINE_EVERY = 6.5  // seconds between highlight sweeps through the wordmark
 const SHINE_FOR = 2.2    // seconds a sweep takes to cross it
 const MAX_PIXELS = 8e6  // backing-store cap, so a 4K screen at 2x isn't a 33MP canvas
+const FLOW_WIDTH = 90   // the page-change ring's band, css px either side of its front
+const FLOW_PUSH = 3.2
+const FLOW_CREST = 34   // the bright band on the flow's front, css px either side
+export const FLOW_EDGE = 60  // the soft edge of what the flow hides, css px either side of its front; the page's mask matches it
 
-type Ring = { x: number, y: number, r: number, paint: number }
-type Box = { x: number, y: number, w: number, h: number }
-// The portrait: fitted inside the box (canvas css px) and sitting on its bottom edge
-export type FieldImage = Box & { image: HTMLImageElement }
+type Ring = { x: number, y: number, r: number, paint?: number }
+// dir 1 runs outward from (x, y), -1 back toward it
+export type Flow = { x: number, y: number, r: number, dir: 1 | -1 }
 
 export class DotField {
   private o: FieldOptions
@@ -57,6 +63,7 @@ export class DotField {
   private ro: ResizeObserver
   private ptr = { x: 0, y: 0, on: false, speed: 0, t: 0 }
   private rings: Ring[] = []
+  private flow: Flow | null = null
   private time = 0
   private acc = 0
   private since = 0
@@ -72,8 +79,9 @@ export class DotField {
   private cols = 0
   private rows = 0
   private n = 0
-  private markSource: CanvasImageSource | null = null
-  private markBox: Box | null = null
+  private markData: FieldMark | null = null
+  private pres = 0      // how far the portrait and wordmark have faded in
+  private presAim = 0
   private picture: FieldImage | null = null
   private detail: HTMLCanvasElement | null = null  // the colour circles, painted once per layout
   private detailX = 0
@@ -105,6 +113,7 @@ export class DotField {
   constructor(private canvas: HTMLCanvasElement, options: Partial<FieldOptions> = {}) {
     this.o = this.v = { ...FIELD_DEFAULTS, ...options }
     this.g = canvas.getContext('2d')!
+    canvas.style.width = canvas.style.height = '100%'
     this.ro = new ResizeObserver(() => this.resize())
     this.ro.observe(canvas)
     this.resize()
@@ -140,42 +149,34 @@ export class DotField {
     this.draw()
   }
 
-  // Set a wordmark into the field: `source` is drawn into `box` (canvas css px) and each dot it covers grows
-  set markImage(value: { source: CanvasImageSource, box: Box } | null) {
-    this.markSource = value?.source ?? null
-    this.markBox = value?.box ?? null
+  setMark(mark: FieldMark | null) {
+    this.markData = mark
     this.sampleMark()
     this.draw()
   }
 
-  private sampleMark() {
-    this.mark.fill(0)
-    if (!this.markSource || !this.markBox) return
-    this.eachCell(this.markSource, this.markBox, (i, data, at) => { this.mark[i] = data[at + 3] / 255 })
+  // fade the portrait and the wordmark in or out; `instant` when a flow is hiding the change
+  show(visible: boolean, instant = false) {
+    this.presAim = visible ? 1 : 0
+    if (instant || this.o.still()) { this.pres = this.presAim; this.draw() }
+    this.lastActive = this.time
   }
 
-  // Draw `src` into `box` averaged down to one pixel per field cell, lined up with the grid, and visit every cell
-  // it reaches with that cell's dot index and its RGBA at data[at]
-  private eachCell(src: CanvasImageSource, box: Box, visit: (i: number, data: Uint8ClampedArray, at: number) => void) {
-    const { gap, ox, oy, cols, rows } = this
-    if (!this.n) return
-    const k0 = Math.max(0, Math.floor((box.x - ox) / gap)), k1 = Math.min(cols - 1, Math.ceil((box.x + box.w - ox) / gap))
-    const j0 = Math.max(0, Math.floor((box.y - oy) / gap)), j1 = Math.min(rows - 1, Math.ceil((box.y + box.h - oy) / gap))
-    const w = k1 - k0 + 1, h = j1 - j0 + 1
-    if (w < 1 || h < 1) return
-    const cells = document.createElement('canvas')
-    cells.width = w; cells.height = h
-    const g = cells.getContext('2d', { willReadFrequently: true })!
-    g.imageSmoothingQuality = 'high'
-    // cell k covers [ox + (k - .5) gap, ox + (k + .5) gap]
-    g.drawImage(src, (box.x - (ox + (k0 - .5) * gap)) / gap, (box.y - (oy + (j0 - .5) * gap)) / gap, box.w / gap, box.h / gap)
-    const data = g.getImageData(0, 0, w, h).data
-    for (let j = 0; j < h; j++) for (let k = 0; k < w; k++) visit((j0 + j) * cols + k0 + k, data, (j * w + k) * 4)
+  setFlow(flow: Flow | null) {
+    this.flow = flow
+    this.lastActive = this.time
+  }
+
+  private grid() { return { gap: this.gap, ox: this.ox, oy: this.oy, cols: this.cols, rows: this.rows } }
+
+  private sampleMark() {
+    this.mark.fill(0)
+    if (this.markData && this.n) cells(this.markData.source, this.markData.box, this.grid(), (i, data, at) => { this.mark[i] = data[at + 3] / 255 })
   }
 
   // The wordmark's dots scatter across the screen and fly home, left to right
   assemble() {
-    const box = this.markBox
+    const box = this.markData?.box
     if (this.o.still() || !box) return
     const { mark, hx, hy, x, y, vx, vy, wait } = this, spread = Math.max(this.w, this.h) * .45
     for (let i = 0; i < this.n; i++) {
@@ -203,7 +204,7 @@ export class DotField {
       const fit = Math.min(pic.w / pic.image.naturalWidth, pic.h / pic.image.naturalHeight)
       const dw = pic.image.naturalWidth * fit, dh = pic.image.naturalHeight * fit
       const left = pic.x + (pic.w - dw) / 2, top = pic.y + pic.h - dh
-      this.eachCell(pic.image, { x: left, y: top, w: dw, h: dh }, (i, data, at) => {
+      cells(pic.image, { x: left, y: top, w: dw, h: dh }, this.grid(), (i, data, at) => {
         this.cover[i] = data[at + 3] / 255
         this.lum[i] = (data[at] * .299 + data[at + 1] * .587 + data[at + 2] * .114) / 255
       })
@@ -256,12 +257,25 @@ export class DotField {
     g.globalCompositeOperation = 'source-over'
   }
 
-  // Turn the sampled lightness into dot sizes for the current theme
+  // Turn the sampled lightness into dot sizes for the current theme. Dark dots on paper read the photo directly.
+  // Light dots on a dark page need more care, or the skin's mid-tones all reach full size and the face becomes one
+  // bright patch: the subject's tones are stretched so its darkest and lightest few percent reach the ends, and a
+  // curve saves the biggest dots for real highlights. A floor keeps the outline (dark hair on a dark page, a white
+  // shirt on paper) visible.
   private shade() {
     const { cover, lum, tone } = this, invert = this.v.invert
+    if (!invert) {
+      for (let i = 0; i < this.n; i++) tone[i] = cover[i] && cover[i] * (.2 + .8 * Math.pow(1 - lum[i], .85))
+      return
+    }
+    const counts = new Uint32Array(64)
+    let total = 0
+    for (let i = 0; i < this.n; i++) if (cover[i] > .5) { counts[Math.min(63, lum[i] * 64 | 0)]++; total++ }
+    const at = (share: number) => { let sum = 0; for (let b = 0; b < 64; b++) if ((sum += counts[b]) >= total * share) return b / 63; return 1 }
+    const lo = total ? at(.03) : 0, hi = total ? Math.max(lo + .1, at(.995)) : 1
     for (let i = 0; i < this.n; i++) {
-      // a floor keeps the outline: hair on a dark ground or a white shirt on paper still gets a visible dot
-      tone[i] = cover[i] && cover[i] * (.2 + .8 * Math.pow(invert ? lum[i] : 1 - lum[i], .85))
+      const l = Math.min(1, Math.max(0, (lum[i] - lo) / (hi - lo)))
+      tone[i] = cover[i] && cover[i] * (.2 + .8 * Math.pow(l, 2))
     }
   }
 
@@ -288,6 +302,12 @@ export class DotField {
 
   leave() { this.ptr.on = false }
 
+  ripple(x: number, y: number) {
+    if (this.o.still()) return
+    this.rings.push({ x, y, r: 0 })
+    this.lastActive = this.time
+  }
+
   // A colour wave from (x, y): the image turns to colour where the ring passes, and the next wave turns it back.
   // Returns whether the image is now in colour.
   wave(x: number, y: number) {
@@ -303,7 +323,7 @@ export class DotField {
     if (this.o.still() || !this.n) return
     this.acc = Math.min(this.acc + dt, STEP * 4)
     this.since += dt
-    const idle = !this.rings.length && this.time - this.lastActive > 1.5
+    const idle = !this.rings.length && !this.flow && this.time - this.lastActive > 1.5
     if (idle && this.since < 1 / this.o.idleFps) return
     this.since = 0
     let ran = false
@@ -318,12 +338,18 @@ export class DotField {
     for (const r of this.rings) r.r += o.ringSpeed * STEP
     this.rings = this.rings.filter(r => r.r < far)
     if (this.rings.length) this.lastActive = t
+    if (this.pres !== this.presAim) {
+      this.pres += (this.presAim - this.pres) * .07
+      if (Math.abs(this.presAim - this.pres) < .004) this.pres = this.presAim
+      this.lastActive = t
+    }
     const shove = this.v.push * (.35 + Math.min(p.speed, 3))
     p.speed *= .9
     const P = o.peekRadius
     // after a wave, show the picture whole until the pointer moves away from where it clicked
     if (this.hold && p.on && Math.hypot(p.x - this.hold.x, p.y - this.hold.y) > 36) this.hold = null
-    const lens = p.on && !this.hold
+    const lens = p.on && !this.hold && this.pres > .5 && !this.flow
+    const fl = this.flow, fin2 = fl ? Math.max(0, fl.r - FLOW_WIDTH) ** 2 : 0, fout2 = fl ? (fl.r + FLOW_WIDTH) ** 2 : 0
     let turning = false
 
     for (let i = 0; i < this.n; i++) {
@@ -353,11 +379,20 @@ export class DotField {
       }
       for (const r of this.rings) {
         const dx = x[i] - r.x, dy = y[i] - r.y, d = Math.hypot(dx, dy), edge = Math.abs(d - r.r)
-        if (d < r.r) aim[i] = r.paint
+        if (r.paint !== undefined && d < r.r) aim[i] = r.paint
         if (edge < o.ringWidth && d > .01) {
           const k = (1 - edge / o.ringWidth) * (1 - r.r / far)
           ax += dx / d * k * o.ringPush; ay += dy / d * k * o.ringPush
           near = Math.max(near, k * .5)
+        }
+      }
+      // the flow's front carries the dots along the way it is running
+      if (fl) {
+        const dx = x[i] - fl.x, dy = y[i] - fl.y, d2 = dx * dx + dy * dy
+        if (d2 > fin2 && d2 < fout2 && d2 > .0001) {
+          const d = Math.sqrt(d2), k = 1 - Math.abs(d - fl.r) / FLOW_WIDTH
+          ax += fl.dir * dx / d * k * FLOW_PUSH; ay += fl.dir * dy / d * k * FLOW_PUSH
+          near = Math.max(near, k * .75)
         }
       }
       vx[i] = (vx[i] + ax) * o.friction; vy[i] = (vy[i] + ay) * o.friction
@@ -384,31 +419,43 @@ export class DotField {
   // Where the image shows in colour, each dot draws its colour circle instead, faded in TILE_LEVELS steps.
   private draw() {
     if (!this.n) return
-    const { g, dpr, x, y, hx, hy, sx, sy, bloom, tone, cover, hue, peek, mark, v, gap, detail, tiles } = this
+    const { g, dpr, x, y, hx, hy, sx, sy, bloom, tone, cover, hue, peek, mark, v, gap, detail, tiles, pres } = this
     const full = gap * .56
     // where the highlight is in its sweep through the wordmark, if it is crossing now
-    const box = this.markBox, phase = this.time % SHINE_EVERY, band = 150
+    const box = this.markData?.box, phase = this.time % SHINE_EVERY, band = 150
     const sweep = box && phase < SHINE_FOR ? box.x - band + phase / SHINE_FOR * (box.w + band * 2) : null
     g.setTransform(dpr, 0, 0, dpr, 0, 0)
     g.clearRect(0, 0, this.w, this.h)
     g.fillStyle = this.ink
     const paths = Array.from({ length: BUCKETS }, () => new Path2D())
     for (const list of tiles) list.length = 0
+    const fl = this.flow
     for (let i = 0; i < this.n; i++) {
-      const b = Math.min(1, bloom[i] * v.bloom)
+      let b = Math.min(1, bloom[i] * v.bloom), pv = pres
+      if (fl) {
+        // the flow's front is a bright band that keeps up with it, and inside the front the portrait and
+        // wordmark are washed away
+        const dx = hx[i] - fl.x, dy = hy[i] - fl.y, d = Math.sqrt(dx * dx + dy * dy), c = 1 - Math.abs(d - fl.r) / FLOW_CREST
+        if (c > 0) b = Math.max(b, c * c)
+        if (pv && (cover[i] || mark[i])) {
+          const u = Math.min(1, Math.max(0, (d - fl.r) / (2 * FLOW_EDGE) + .5))
+          pv *= u * u * (3 - 2 * u)
+        }
+      }
       // the waves set how far a dot shows its colour, and the pointer turns that the other way nearby
-      const m = cover[i] && detail ? hue[i] + (1 - 2 * hue[i]) * peek[i] : 0
+      const m = cover[i] && detail ? (hue[i] + (1 - 2 * hue[i]) * peek[i]) * pv : 0
       if (m > .02) tiles[Math.min(TILE_LEVELS - 1, Math.floor(m * TILE_LEVELS))].push(i)
       if (m > .98) continue
-      let t = tone[i]
-      if (mark[i]) {
+      let t = tone[i] * pv
+      if (mark[i] && pv) {
         // flying dots stay small and swell as they arrive; the highlight runs on a slant
         const arrive = 1 - Math.min(1, Math.hypot(x[i] - hx[i], y[i] - hy[i]) / 220)
         const s = sweep === null ? 0 : Math.max(0, 1 - Math.abs(hx[i] + (hy[i] - box!.y) * .35 - sweep) / band)
-        t = Math.max(t, mark[i] * (MARK_TONE + (1 - MARK_TONE) * s * s * (3 - 2 * s)) * arrive)
+        t = Math.max(t, pv * mark[i] * (MARK_TONE + (1 - MARK_TONE) * s * s * (3 - 2 * s)) * arrive)
       }
       const r = (v.dot + t * (full - v.dot)) * (1 - m) + v.dot * b * v.swell
-      const k = Math.round(Math.min(1, Math.max(b, t * 1.8)) * (BUCKETS - 1))
+      // a dot's brightness follows its size; on a dark page more gently, so mid-tones stay mid-grey
+      const k = Math.round(Math.min(1, Math.max(b, t * (v.invert ? 1.25 : 1.8))) * (BUCKETS - 1))
       if (r < 1) { paths[k].rect(x[i] - r, y[i] - r, r * 2, r * 2); continue }
       paths[k].moveTo(x[i] + r, y[i])
       paths[k].arc(x[i], y[i], r, 0, Math.PI * 2)

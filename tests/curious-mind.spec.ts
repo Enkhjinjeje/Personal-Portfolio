@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('head opens with keyboard, closes with Escape, and remains usable on mobile with reduced motion', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/about')
   const trigger = page.getByRole('button', { name: "Explore what's on my mind" })
   await trigger.scrollIntoViewIfNeeded()
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
@@ -11,7 +11,7 @@ test('head opens with keyboard, closes with Escape, and remains usable on mobile
   await expect(page.locator('.mind-caption')).toContainText('Pick an icon')
   await expect(page.locator('.mind-object')).toHaveCount(6)
   await expect.poll(() => page.locator('.mind-object').first().evaluate(el => getComputedStyle(el).opacity)).toBe('1')
-  await page.locator('#about').screenshot({ path: 'test-results/mind-desktop-open.png' })
+  await page.locator('.about').screenshot({ path: 'test-results/mind-desktop-open.png' })
   await page.keyboard.press('Escape')
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   await expect(trigger).toBeFocused()
@@ -23,16 +23,16 @@ test('head opens with keyboard, closes with Escape, and remains usable on mobile
     await expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `No overflow at ${width}px`).toBe(true)
     expect(await page.locator('.mind-crown').evaluate(el => getComputedStyle(el).transitionDuration)).toBe('0s')
-    if (width === 390) await page.locator('#about').screenshot({ path: 'test-results/mind-mobile-open.png' })
+    if (width === 390) await page.locator('.about').screenshot({ path: 'test-results/mind-mobile-open.png' })
     await trigger.click()
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   }
-  await page.locator('#about').screenshot({ path: 'test-results/mind-desktop-closed.png' })
+  await page.locator('.about').screenshot({ path: 'test-results/mind-desktop-closed.png' })
 })
 
 test('interest labels stay above the head and icons open dismissible bubbles', async ({ page }) => {
   test.setTimeout(60000) // Exercise all six stories at three sizes, including their full transitions.
-  await page.goto('/#about')
+  await page.goto('/about')
   await page.getByRole('button', { name: "Explore what's on my mind" }).click()
   const code = page.getByRole('button', { name: 'Building with code', exact: true })
   await code.hover()
@@ -57,13 +57,13 @@ test('interest labels stay above the head and icons open dismissible bubbles', a
     }
   }
   await code.click()
-  await page.getByRole('heading', { name: 'More than a screen.' }).click()
+  await page.getByRole('heading', { name: 'Good things happen when curious minds come together.' }).click()
   await expect(page.locator('#mind-bubble')).toHaveCount(0)
 })
 
 test('stories sit left of the head and finish exiting before the latest selection enters', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
-  await page.goto('/#about')
+  await page.goto('/about')
   await page.getByRole('button', { name: "Explore what's on my mind" }).click()
   await page.getByRole('button', { name: 'Building with code', exact: true }).click()
   const story = page.locator('#mind-bubble')
@@ -78,7 +78,7 @@ test('stories sit left of the head and finish exiting before the latest selectio
   await expect(story).toHaveCount(1)
   await expect(story).toHaveAccessibleName('Always learning')
   await expect(story).toHaveClass(/mind-story-idle/)
-  await page.locator('#about').screenshot({ path: 'test-results/mind-story-desktop.png' })
+  await page.locator('.about').screenshot({ path: 'test-results/mind-story-desktop.png' })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('.curious-mind').screenshot({ path: 'test-results/mind-story-mobile.png' })
 })

@@ -1,42 +1,98 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
-test('portfolio content, interactions, and responsive layout survive the migration', async ({ page, context, request }) => {
+const pages = [
+  { path: '/', corner: 'Home', heading: /Jeje/ },
+  { path: '/projects', corner: 'Projects', heading: 'Projects.' },
+  { path: '/work', corner: 'Work experience', heading: 'Work experience.' },
+  { path: '/about', corner: 'About me', heading: 'Good things happen when curious minds come together.' },
+  { path: '/contact', corner: 'Contact', heading: /Let’s make/ },
+]
+
+// No page scrolls; the stage between the corners holds its page without overflowing on a laptop screen (the
+// projects page scrolls through its list inside the stage on purpose)
+const fitsOneScreen = (page: Page) => page.evaluate(() => {
+  const stage = document.getElementById('main')!
+  const fits = document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth
+  return fits && (!!stage.querySelector('.projects') || stage.scrollHeight <= stage.clientHeight + 1)
+})
+const nav = (page: Page) => page.getByRole('navigation', { name: 'Main navigation' })
+
+test('the four corners flow between pages that each fit one screen', async ({ page, context, request }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
-  page.on('console', message => {
-    if (message.type() === 'error') errors.push(message.text())
-  })
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await page.evaluate(() => document.fonts.ready)
   await expect(page).toHaveTitle('Jeje — Developer & community builder')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
   await page.keyboard.press('Tab')
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused()
 
+  // the portrait colours in and back
   await expect(page.getByRole('img', { name: /portrait drawn in dots, in black and white/ })).toBeVisible()
   const color = page.locator('.color-hint')
-  await expect(color).toHaveAccessibleName(/color me in/)
   await color.click()
   await expect(color).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('img', { name: /portrait drawn in dots, in colour/ })).toBeVisible()
   await color.click()
   await expect(color).toHaveAttribute('aria-pressed', 'false')
 
-  for (const detail of await page.locator('details').all()) {
-    await detail.locator('summary').click()
-    await expect(detail).toHaveAttribute('open', '')
-    await detail.locator('summary').click()
-    await expect(detail).not.toHaveAttribute('open')
+  // each corner flows to its page, where that same corner turns into the way home
+  for (const { path, corner, heading } of pages.slice(1)) {
+    await nav(page).getByRole('link', { name: corner }).click()
+    // the flow runs out first: the page changes only when it bounces, and the mask lifts when it lands
+    await expect(page.locator('html')).toHaveClass(/is-flowing/)
+    expect(new URL(page.url()).pathname).toBe('/')
+    await expect(page).toHaveURL(new RegExp(`${path}$`))
+    await expect(page.locator('html')).not.toHaveClass(/is-flowing/)
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    expect(await fitsOneScreen(page), `${path} fits one screen`).toBe(true)
+    await expect(nav(page).getByRole('link', { name: corner })).toHaveCount(0)
+    const home = nav(page).getByRole('link', { name: 'Home' })
+    await expect(home).toHaveAttribute('href', '/')
+    await home.click()
+    await expect(page).toHaveURL(/\/$/)
+    await expect(page.locator('html')).not.toHaveClass(/is-flowing/)
   }
 
+  // the projects scroll through their list, and the details follow the project in view
+  await page.goto('/projects')
+  await expect(page.locator('.projects-meta')).toContainText('June 2025 – Present')
+  await page.getByRole('button', { name: 'Next →' }).click()
+  await expect(page.locator('.projects-meta')).toContainText('Mongolian Cultural Center staff')
+  await page.locator('.projects-stage').focus()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.locator('.projects-meta')).toContainText('Pinecone Solutions')
+  await expect(page.locator('.projects-text')).toContainText('501(c)(3)')
+
+  // Esc flows home from any other page
+  await page.goto('/work')
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.locator('html')).not.toHaveClass(/is-flowing/)
+
+  // one role open at a time
+  await page.goto('/work')
+  const rows = page.locator('details.experience-row')
+  await expect(rows).toHaveCount(5)
+  await rows.nth(0).locator('summary').click()
+  await expect(rows.nth(0)).toHaveAttribute('open', '')
+  await expect(rows.nth(0)).toContainText('2,279')
+  await rows.nth(1).locator('summary').click()
+  await expect(rows.nth(1)).toHaveAttribute('open', '')
+  await expect(rows.nth(0)).not.toHaveAttribute('open')
+  await rows.nth(1).locator('summary').click()
+  await expect(rows.nth(1)).not.toHaveAttribute('open')
+  await expect.poll(() => page.locator('img').evaluateAll(images => images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true)
+
+  await page.goto('/contact')
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.getByRole('button', { name: 'Copy email address' }).click()
   await expect(page.getByRole('status')).toHaveText('Copied!')
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('enkhjinjeje@gmail.com')
   await page.evaluate(() => {
-    Object.defineProperty(navigator.clipboard, 'writeText', {
-      value: () => Promise.reject(new Error('Denied')),
-    })
+    Object.defineProperty(navigator.clipboard, 'writeText', { value: () => Promise.reject(new Error('Denied')) })
   })
   await page.getByRole('button', { name: 'Copy email address' }).click()
   await expect(page.getByRole('status')).toHaveText('Please copy the email above.')
@@ -44,43 +100,37 @@ test('portfolio content, interactions, and responsive layout survive the migrati
   const resume = await request.get('/JejeResume.pdf')
   expect(resume.ok()).toBeTruthy()
   expect((await resume.body()).subarray(0, 4).toString()).toBe('%PDF')
-  for (const link of await page.locator('a[href^="#"]').all()) {
-    await expect(page.locator((await link.getAttribute('href'))!)).toHaveCount(1)
-  }
-  await page.locator('.project-visual').scrollIntoViewIfNeeded()
-  // every picture that is on show has loaded; hidden phone copies and later crossfade frames load lazily
-  await expect.poll(() => page.locator('img').evaluateAll(images => images
-    .filter(image => image instanceof HTMLImageElement && image.checkVisibility() && image.loading !== 'lazy')
-    .every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true)
 
-  for (const width of [320, 390, 768, 1024, 1440]) {
-    await page.setViewportSize({ width, height: 1000 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    if (width === 390) {
-      await page.getByRole('button', { name: 'Open menu' }).click()
-      const nav = page.getByRole('navigation', { name: 'Mobile navigation' })
-      await expect(nav).toBeVisible()
-      await nav.getByRole('link', { name: 'About' }).click()
-      await expect(nav).toHaveCount(0)
-      await expect(page).toHaveURL(/#about$/)
-      await page.getByRole('link', { name: 'Jeje, home' }).click()
-      await page.getByRole('button', { name: 'Open menu' }).click()
-      await nav.getByRole('link', { name: 'Work' }).focus()
-      await page.keyboard.press('Escape')
-      await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused()
-      await expect(nav).toHaveCount(0)
+  // smaller screens: nothing runs off the side, and the corners use short labels on phones
+  for (const width of [320, 390, 768, 1024]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const { path } of pages) {
+      await page.goto(path)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight), `${path} at ${width}px`).toBe(true)
     }
+    if (width === 390) await expect(page.locator('.corner-tr .label-short')).toBeVisible()
   }
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior)).toBe('auto')
   expect(errors).toEqual([])
 })
 
-test('Next.js serves the portfolio and metadata before JavaScript runs', async ({ browser }) => {
-  const page = await browser.newPage({ javaScriptEnabled: false })
+test('with reduced motion the corners change page at once', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Enkhjin/)
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Contact' }).click()
+  await expect(page).toHaveURL(/\/contact$/)
+  await expect(page.locator('html')).not.toHaveClass(/is-flowing/)
+  await expect(page.getByRole('heading', { level: 1, name: /Let’s make/ })).toBeVisible()
+})
+
+test('every page is served, with its own title, before JavaScript runs', async ({ browser }) => {
+  const page = await browser.newPage({ javaScriptEnabled: false })
+  for (const { path, heading } of pages) {
+    await page.goto(path)
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeAttached()
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Enkhjin/)
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  }
+  await page.goto('/about')
+  await expect(page).toHaveTitle('About me — Jeje')
   await page.close()
 })

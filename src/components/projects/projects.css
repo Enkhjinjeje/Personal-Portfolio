@@ -1,0 +1,50 @@
+/* The projects scroller: a tall section the page stage scrolls through, holding one sticky view */
+.projects {position:relative}
+.projects-stage {position:sticky;top:0;height:var(--stage-h);overflow:hidden;outline:none}
+.projects-stage:focus-visible {outline:2px solid var(--ink);outline-offset:-2px}
+.projects-title {position:absolute;left:0;top:0;font-size:clamp(34px,3.4vw,52px)}
+.projects-hint {position:absolute;right:0;top:12px;font-size:13px;color:var(--muted)}
+.projects-label {font-size:12px;color:var(--muted);margin-bottom:6px}
+
+/* left: the details of the project in view */
+.projects-meta {position:absolute;left:0;top:28%;width:24%;display:grid;gap:20px;font-size:14px;line-height:1.5}
+
+/* middle: the cards, travelling along a diagonal */
+.projects-cards {position:absolute;inset:0;pointer-events:none}
+.project-card {position:absolute;left:50%;top:50%;width:clamp(270px,25%,360px);aspect-ratio:5 / 4;display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:6px;background:var(--soft);will-change:transform}
+.project-card-top {display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.project-card-title {font-size:clamp(24px,2.1vw,32px);font-weight:500;letter-spacing:-.03em;line-height:1.08;margin-top:auto}
+.project-card-figures {display:flex;flex-wrap:wrap;gap:8px 32px}
+.project-card-figures > div {display:flex;flex-direction:column-reverse}
+.project-card-figures dt {font-size:12px;color:var(--muted)}
+.project-card-figures dd {font-size:clamp(28px,2.6vw,38px);font-weight:500;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
+.project-card-link {display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:13px;font-weight:600;border-bottom:1px solid currentColor;padding-block:3px}
+.project-card.is-active .project-card-link {pointer-events:auto}
+.project-card-link:hover {color:var(--muted)}
+
+/* right: the descriptions, rolling with the cards */
+.projects-text {position:absolute;left:74%;top:8%;width:26%;height:80%;overflow:hidden;pointer-events:none}
+.projects-text article {position:absolute;left:0;top:50%;width:100%;font-size:14px;line-height:1.6;will-change:transform}
+.projects-text-title {font-size:20px;font-weight:500;letter-spacing:-.02em;line-height:1.2}
+.projects-dash {margin-block:10px;color:var(--muted)}
+.projects-text article p:last-child {color:var(--muted)}
+
+/* the rolling counter and the steps */
+.projects-count {position:absolute;left:0;bottom:0;display:flex;align-items:flex-start;gap:14px}
+.projects-count .projects-label {padding-top:14px}
+.projects-number {font-size:clamp(64px,8vw,120px);font-weight:500;letter-spacing:-.04em}
+.projects-steps {position:absolute;right:0;bottom:0;display:flex;gap:24px;font-size:13px}
+.projects-steps button {min-height:44px;padding:0;border:0;background:none;color:inherit}
+.projects-steps button:hover {color:var(--muted)}
+
+@media (max-width:767px) {
+  .projects-hint,.projects-meta {display:none}
+  /* the cards travel in their own window under the title, so the next one never covers the text */
+  .projects-cards {top:64px;bottom:auto;height:calc(56% - 64px);overflow:hidden}
+  .project-card {width:min(84%,330px);padding:20px}
+  .projects-text {left:0;top:58%;width:100%;height:27%;text-align:left}
+  .projects-text article {font-size:13px}
+  .projects-text-title {display:none}
+  .projects-count {left:0}
+  .projects-number {font-size:64px}
+}

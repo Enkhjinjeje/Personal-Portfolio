@@ -68,7 +68,7 @@ export default function CuriousMind() {
     else { setOpen(false); trigger.current?.focus({ preventScroll: true }) }
   }}>
     <div className="mind-story-slot" aria-live="polite">
-      {interest && <section key={displayed} id="mind-bubble" className={`mind-bubble mind-story-${phase}`} aria-label={interest.label}
+      {interest && <section key={displayed} id="mind-bubble" className={`mind-bubble mind-story-${phase}`} style={{ '--note-origin-y': `${(interest.y / 450) * 100}%` } as CSSProperties} aria-label={interest.label}
         onAnimationEnd={event => { if (event.target === event.currentTarget && phase === 'enter') setPhase('idle') }}>
         <button ref={closeButton} className="mind-bubble-close" aria-label="Close interest details" onClick={closeBubble}><X size={18} /></button>
         <h3>{interest.label}</h3>
@@ -83,7 +83,7 @@ export default function CuriousMind() {
       <div className="mind-objects" id="mind-interests" inert={!open}>
         {interests.map(({ Icon, label, x, y, angle }, index) => <button
           ref={element => { iconButtons.current[index] = element }}
-          type="button" className="mind-object" key={label}
+          type="button" className={`mind-object ${selected === index ? 'is-selected' : ''}`} key={label}
           aria-label={label} aria-expanded={selected === index} aria-controls={selected === index ? 'mind-bubble' : undefined}
           onClick={() => selected === index ? closeBubble() : setSelected(index)}
           style={{ '--object-x': `${x}px`, '--object-y': `${y}px`, '--object-angle': `${angle}deg`, '--object-delay': `${index * 35}ms` } as CSSProperties}

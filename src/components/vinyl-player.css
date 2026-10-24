@@ -1,0 +1,41 @@
+/* Machined platter, brushed housing and a hinged arm, following the supplied turntable. */
+.vinyl-player {position:relative;width:100%;max-width:350px;min-width:0;padding:12px;border-radius:10px;background:linear-gradient(115deg,#68696a,#343437 40%,#202024 82%);box-shadow:0 7px 0 #080809,0 9px 0 #39393b,0 20px 28px #0004;transform:perspective(900px) rotateX(9deg) rotateZ(-4deg);transition:transform .65s var(--ease);color:#eee;isolation:isolate}
+.vinyl-player:hover,.vinyl-player:focus-within {transform:perspective(900px) rotateX(0) rotateZ(-1deg)}
+.turntable {position:relative;aspect-ratio:1.25;isolation:isolate}
+.deck-screw {position:absolute;top:2px;width:5px;height:5px;background:#101012;border-radius:50%;box-shadow:inset 0 1px 1px #999}
+.screw-one {left:3px}.screw-two {right:3px}
+.vinyl-record {position:absolute;left:0;top:2%;width:77%;aspect-ratio:1;background:#080909;border:0;padding:0;border-radius:50%;color:#fff;box-shadow:0 0 0 3px #b7b9b8,0 3px 0 5px #080909,0 5px 9px #000a}
+.record-disc {position:absolute;inset:5px;background:#161616;border-radius:50%;display:grid;place-items:center;overflow:hidden;animation:record-spin 6s linear infinite;animation-play-state:paused}
+.is-playing .record-disc,.vinyl-player:hover .record-disc {animation-play-state:running}
+.record-art {position:absolute;width:100%;height:100%;object-fit:cover;filter:brightness(.65) saturate(.65)}
+.record-grooves {position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 7px,#080808a6 8px,#ffffff30 9px,transparent 10px 15px);box-shadow:inset 0 0 0 8px #111,inset 0 0 18px #000}
+.record-disc::after {content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(transparent 15%,#ffffff28 22%,transparent 30%,transparent 65%,#ffffff24 73%,transparent 82%)}
+.record-label {position:absolute;width:34%;height:34%;border-radius:50%;background:#234c77;color:#e5e3d9;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:18%;font-size:clamp(7px,1vw,12px);font-weight:600;z-index:1}
+.record-label>span {position:absolute;bottom:15%;font-size:.65em;font-weight:400}
+.record-spindle {position:absolute;width:6px;height:6px;border-radius:50%;background:#eee;box-shadow:1px 2px 2px #000;z-index:2}
+.record-control {position:absolute;inset:calc(50% - 20px);border-radius:50%;background:#0009;display:grid;place-items:center;opacity:0;z-index:3;transition:opacity .2s}
+.vinyl-record:hover .record-control,.vinyl-record:focus-visible .record-control {opacity:1}
+.vinyl-record:disabled {cursor:wait}
+.speed-knob {position:absolute;right:9%;top:1%;width:8%;aspect-ratio:1;background:linear-gradient(110deg,#969697,#5e5e62);border-radius:50%;box-shadow:0 6px 0 #0a0a0c}
+.tonearm {position:absolute;right:9%;top:23%;width:10%;aspect-ratio:1;border-radius:50%;background:#868789;box-shadow:0 5px 0 3px #111;pointer-events:none;z-index:4}
+.tonearm>span {position:absolute;top:45%;left:45%;width:16%;height:clamp(80px,12vw,165px);background:linear-gradient(90deg,#555,#ddd 45%,#777);transform-origin:top;transform:rotate(5deg);transition:transform 1.2s cubic-bezier(.4,0,.2,1);box-shadow:2px 1px 2px #0007}
+.is-playing .tonearm>span,.vinyl-player:hover .tonearm>span {transform:rotate(27deg)}
+.tonearm>span::after {content:'';position:absolute;bottom:-10%;left:-75%;width:250%;height:24%;background:linear-gradient(90deg,#111,#343437);border-radius:2px;box-shadow:1px 2px 1px #000}
+.arm-rest {position:absolute;right:11%;bottom:10%;height:9%;width:4%;border-radius:50%;background:#080809;box-shadow:0 4px 1px #111}
+.deck-display {position:relative;background:#0c0d0e;padding:12px 13px 10px;border-radius:5px;margin-top:7px}
+.deck-status {display:flex;gap:6px;align-items:center;font-size:9px;color:#bbb}
+.status-light {width:5px;height:5px;border-radius:50%;background:#777}.status-light.on {background:#b0cf9c;box-shadow:0 0 7px #b0cf9c70}
+.deck-speed {margin-left:auto;color:#777}
+.record-caption {display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:4px}
+.record-caption h2 {font-size:clamp(15px,1.5vw,22px);letter-spacing:-.03em}
+.record-caption p {font-size:11px;color:#aaa}
+.record-caption a {padding:5px}
+.record-status {font-size:9px;color:#999;line-height:1.4;margin-top:8px;min-height:13px}
+.spotify-toggle {display:block;border:0;background:none;color:#aaa;text-decoration:underline;text-underline-offset:3px;font-size:9px;padding:6px 0 0}
+.spotify-player {position:absolute;z-index:10;left:0;right:0;bottom:0;padding:27px 6px 6px;background:#191919;visibility:hidden;pointer-events:none;border-radius:5px;box-shadow:0 12px 24px #0005}
+.spotify-player.is-visible {visibility:visible;pointer-events:auto}
+.spotify-player iframe {display:block;border:0;width:100%;border-radius:0}
+.spotify-close {position:absolute;top:0;right:4px;border:0;background:none;color:#fff;width:28px;height:28px;font-size:22px}
+@keyframes record-spin {to {transform:rotate(360deg)}}
+@media(max-width:700px) {.vinyl-player {padding:7px}.deck-display {padding:8px}.deck-status {font-size:7px}.record-caption {margin-top:5px}.record-caption p {font-size:8px}.record-status {font-size:8px;margin-top:5px}.deck-speed {display:none}.tonearm>span {height:clamp(65px,21vw,120px)}.record-caption a {padding:2px}.record-caption a svg {width:15px}.spotify-toggle {font-size:8px}.record-control {opacity:1}.record-control svg {width:14px}}
+@media(prefers-reduced-motion:reduce) {.record-disc {animation:none}.tonearm>span,.vinyl-player {transition:none}}
