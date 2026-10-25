@@ -8,6 +8,8 @@
 .project-field:active {cursor:grabbing}
 .project-links {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .project-plane {position:absolute;left:0;top:0;will-change:transform}
+/* until script has fitted the tiles to the screen; without script they show where the page put them */
+.js .project-plane:not(.is-fitted) {visibility:hidden}
 
 /* a tile: the site in colour through a screen of dots, its name and number beneath; near the pointer it shows sharp */
 .project-tile {position:absolute;display:grid;gap:12px;width:calc(320px * var(--tile-scale));padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}

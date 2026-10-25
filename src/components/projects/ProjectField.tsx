@@ -27,6 +27,9 @@ export default function ProjectField() {
   const plane = useRef<HTMLDivElement>(null)
   const links = useRef<HTMLCanvasElement>(null)
   const [fit, setFit] = useState({ layout: LAYOUTS.wide as Layout, scale: 1, copies: { cols: 2, rows: 2 } })
+  // the tiles wait, hidden, for the first fit: the page arrives in the wide layout, and a phone would otherwise see
+  // them jump into its own
+  const [fitted, setFitted] = useState(false)
   const [open, setOpen] = useState<number | null>(null)
   const [opening, setOpening] = useState<number | null>(null)
   const [near, setNear] = useState<string | null>(null)
@@ -54,6 +57,7 @@ export default function ProjectField() {
       c.width = Math.round(width * dpr); c.height = Math.round(height * dpr)
       c.getContext('2d')!.setTransform(dpr, 0, 0, dpr, 0, 0)
       setFit(fitLayout(width, height))
+      setFitted(true)
     }
     resize()
     const sizes = new ResizeObserver(resize)
@@ -249,7 +253,7 @@ export default function ProjectField() {
     <div ref={view} className="project-field" style={{ '--tile-scale': scale } as CSSProperties}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={() => { pointer.current = null }} onClick={send}>
       <canvas ref={links} className="project-links" aria-hidden="true" />
-      <div ref={plane} className="project-plane">{tiles}</div>
+      <div ref={plane} className={`project-plane ${fitted ? 'is-fitted' : ''}`}>{tiles}</div>
     </div>
     <h1 id="projects-heading" className="projects-title">Projects.</h1>
     <StationLine here={inView} go={centre} />
