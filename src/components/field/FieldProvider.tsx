@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { usePathname, useRouter } from 'next/navigation'
 import type { FieldMark } from './field'
 import { DotField, FLOW_EDGE } from './dotField'
+// imported, so its name carries a hash of the file and browsers can keep it for good
+import portraitImage from '../../assets/portrait-cutout.webp'
 
 // A page change is a flow: a wave runs from the click to the far side of the screen, speeding up and washing the
 // page away, bounces, and runs back to the click, slowing down and bringing the new page in behind it
@@ -50,7 +52,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     const density = Math.min(20, Math.max(1, Number(new URLSearchParams(location.search).get('dots')) || 1.25))
     const f = field.current = new DotField(el, { still: () => reduce.matches, density })
     const portrait = new Image()
-    portrait.src = '/portrait-cutout.webp'
+    portrait.src = portraitImage.src
     // The loader lifts once the fonts, the portrait and the page's own images are in, or after LOAD_CAP on a very
     // slow network; a portrait still on its way then joins the field whenever it lands
     const pictured = portrait.decode().catch(() => {})

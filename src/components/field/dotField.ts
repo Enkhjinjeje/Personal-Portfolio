@@ -69,6 +69,7 @@ export class DotField {
   private acc = 0
   private since = 0
   private lastActive = -Infinity
+  private lastStir = -Infinity  // the last time the pointer, a ring or a flow moved the plain background dots
   private ink = '#1e1e1e'
   private colored = 0
   private w = 0
@@ -90,6 +91,8 @@ export class DotField {
   private covered = 0   // how many dots the portrait covers
   private tiles: number[][] = Array.from({ length: TILE_LEVELS }, () => [])
   private hold: { x: number, y: number } | null = null  // where a wave was sent; the lens waits until the pointer leaves it
+  private live: number[] = []  // the portrait's and the wordmark's dots: once the field settles, the only ones that move
+  private rest: HTMLCanvasElement | null = null  // the settled field without them, painted once while it stays idle
   private hx = new Float32Array(0)
   private hy = new Float32Array(0)
   private x = new Float32Array(0)
@@ -168,7 +171,7 @@ export class DotField {
 
   setFlow(flow: Flow | null) {
     this.flow = flow
-    this.lastActive = this.time
+    this.lastActive = this.lastStir = this.time
   }
 
   private grid() { return { gap: this.gap, ox: this.ox, oy: this.oy, cols: this.cols, rows: this.rows } }
@@ -176,6 +179,13 @@ export class DotField {
   private sampleMark() {
     this.mark.fill(0)
     if (this.markData && this.n) cells(this.markData.source, this.markData.box, this.grid(), (i, data, at) => { this.mark[i] = data[at + 3] / 255 })
+    this.findLive()
+  }
+
+  private findLive() {
+    this.live = []
+    for (let i = 0; i < this.n; i++) if (this.cover[i] || this.mark[i]) this.live.push(i)
+    this.rest = null
   }
 
   // The wordmark's dots scatter across the screen and fly home, left to right
@@ -217,6 +227,7 @@ export class DotField {
     this.covered = 0
     for (let i = 0; i < this.n; i++) if (this.cover[i]) this.covered++
     this.shade()
+    this.findLive()
   }
 
   // The colour picture: the photo itself, kept only inside one round window per field cell, so every dot of the
@@ -303,7 +314,7 @@ export class DotField {
     const p = this.ptr
     if (p.on) p.speed = Math.max(p.speed, Math.hypot(x - p.x, y - p.y) / Math.max(1, t - p.t))
     Object.assign(p, { x, y, t, on: true })
-    this.lastActive = this.time
+    this.lastActive = this.lastStir = this.time
   }
 
   leave() { this.ptr.on = false }
@@ -311,7 +322,7 @@ export class DotField {
   ripple(x: number, y: number) {
     if (this.o.still()) return
     this.rings.push({ x, y, r: 0 })
-    this.lastActive = this.time
+    this.lastActive = this.lastStir = this.time
   }
 
   // A colour wave from (x, y): the image turns to colour where the ring passes, and the next wave turns it back.
@@ -321,7 +332,7 @@ export class DotField {
     this.hold = { x, y }
     if (this.o.still()) { this.aim.fill(this.colored); this.hue.fill(this.colored); this.draw(); return this.colored === 1 }
     this.rings.push({ x, y, r: 0, paint: this.colored })
-    this.lastActive = this.time
+    this.lastActive = this.lastStir = this.time
     return this.colored === 1
   }
 
@@ -330,23 +341,26 @@ export class DotField {
     // at most two steps a frame, so one slow frame does not make the next one slower
     this.acc = Math.min(this.acc + dt, STEP * 2)
     this.since += dt
-    const idle = !this.rings.length && !this.flow && this.time - this.lastActive > 1.5
+    // calm: nothing has stirred the plain background for a while, so only the portrait and the wordmark move (they
+    // breathe, fade, gather and turn colour on their own): step them alone and draw them over the still rest
+    const calm = !this.rings.length && !this.flow && this.time - this.lastStir > 1.5
+    const idle = calm && this.time - this.lastActive > 1.5
     // with no portrait or wordmark to breathe, a settled field looks the same every frame: stop drawing it
     if (idle && !this.pres && !this.presAim) return
     if (idle && this.since < 1 / this.o.idleFps) return
     this.since = 0
     let ran = false
-    while (this.acc >= STEP) { this.step(); this.acc -= STEP; ran = true }
-    if (ran) this.draw()
+    while (this.acc >= STEP) { this.step(calm ? this.live : null); this.acc -= STEP; ran = true }
+    if (ran) this.draw(calm)
   }
 
-  private step() {
+  private step(only: number[] | null = null) {
     const o = this.o, t = this.time += STEP, p = this.ptr
     const { hx, hy, x, y, vx, vy, sx, sy, bloom, gain, reach, rate, curve, cover, aim, hue, peek, mark, wait } = this
     const far = Math.hypot(this.w, this.h)
     for (const r of this.rings) r.r += o.ringSpeed * STEP
     this.rings = this.rings.filter(r => r.r < far)
-    if (this.rings.length) this.lastActive = t
+    if (this.rings.length || this.flow) this.lastActive = this.lastStir = t
     if (this.pres !== this.presAim) {
       this.pres += (this.presAim - this.pres) * .07
       if (Math.abs(this.presAim - this.pres) < .004) this.pres = this.presAim
@@ -361,7 +375,8 @@ export class DotField {
     const fl = this.flow, fin2 = fl ? Math.max(0, fl.r - FLOW_WIDTH) ** 2 : 0, fout2 = fl ? (fl.r + FLOW_WIDTH) ** 2 : 0
     let turning = false
 
-    for (let i = 0; i < this.n; i++) {
+    for (let j = 0, count = only ? only.length : this.n; j < count; j++) {
+      const i = only ? only[j] : j
       if (wait[i] > 0) { wait[i] = Math.max(0, wait[i] - STEP); turning = true; continue }
       // the breathing: two slow sines move the home cell a couple of px
       // only the portrait and the wordmark breathe: plain background dots are smaller than a pixel, and drifting
@@ -429,20 +444,48 @@ export class DotField {
   // Dots are bucketed by alpha so a frame is a handful of fills, not one per dot. Resting dots are sub-pixel,
   // so they draw as squares (identical at that size, much cheaper); only image and blooming dots draw as circles.
   // Where the image shows in colour, each dot draws its colour circle instead, faded in TILE_LEVELS steps.
-  private draw() {
+  // `calm`: nothing but the portrait and the wordmark is moving, so the rest is drawn from the still layer, painted
+  // the first time it is needed, and only their dots are traced again
+  private draw(calm = false) {
     if (!this.n) return
-    const { g, dpr, x, y, hx, hy, sx, sy, bloom, tone, cover, hue, peek, mark, v, gap, detail, tiles, pres } = this
+    const { g, dpr, tiles } = this
+    g.setTransform(dpr, 0, 0, dpr, 0, 0)
+    g.clearRect(0, 0, this.w, this.h)
+    for (const list of tiles) list.length = 0
+    if (calm) {
+      if (!this.rest) {
+        const rest = this.rest = document.createElement('canvas')
+        rest.width = this.canvas.width; rest.height = this.canvas.height
+        const rg = rest.getContext('2d')!
+        rg.setTransform(dpr, 0, 0, dpr, 0, 0)
+        this.dots(rg, null, true)
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0)
+      g.drawImage(this.rest, 0, 0)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      this.dots(g, this.live, false)
+    } else {
+      this.rest = null
+      this.dots(g, null, false)
+    }
+    this.colourCircles(g)
+    g.globalAlpha = 1
+  }
+
+  // Trace the dots in `list` (all of them when null), leaving out the portrait's and the wordmark's when `still`, and
+  // fill them by brightness; colour circles are queued in tiles for colourCircles
+  private dots(g: CanvasRenderingContext2D, list: number[] | null, still: boolean) {
+    const { dpr, x, y, hx, hy, bloom, tone, cover, hue, peek, mark, v, gap, detail, tiles, pres } = this
     const full = gap * .56
     // where the highlight is in its sweep through the wordmark, if it is crossing now
     const box = this.markData?.box, phase = this.time % SHINE_EVERY, band = 150
     const sweep = box && phase < SHINE_FOR ? box.x - band + phase / SHINE_FOR * (box.w + band * 2) : null
-    g.setTransform(dpr, 0, 0, dpr, 0, 0)
-    g.clearRect(0, 0, this.w, this.h)
     g.fillStyle = this.ink
     const paths = Array.from({ length: BUCKETS }, () => new Path2D())
-    for (const list of tiles) list.length = 0
     const fl = this.flow
-    for (let i = 0; i < this.n; i++) {
+    for (let j = 0, count = list ? list.length : this.n; j < count; j++) {
+      const i = list ? list[j] : j
+      if (still && (cover[i] || mark[i])) continue
       let b = Math.min(1, bloom[i] * v.bloom), pv = pres
       if (fl) {
         // the flow's front is a bright band that keeps up with it, and inside the front the portrait and
@@ -477,6 +520,10 @@ export class DotField {
       g.globalAlpha = v.restAlpha + (1 - v.restAlpha) * k / (BUCKETS - 1)
       g.fill(path)
     })
+  }
+
+  private colourCircles(g: CanvasRenderingContext2D) {
+    const { dpr, sx, sy, hx, hy, gap, detail, tiles } = this
     if (detail) {
       // Colour circles the pointer, a wave or a flow is pushing move with their dots, each carrying its piece of the
       // photo. The rest sit on their home cells, on whole pixels, and are drawn a level at a time as the whole
@@ -523,6 +570,5 @@ export class DotField {
         if (!whole) g.restore()
       })
     }
-    g.globalAlpha = 1
   }
 }
