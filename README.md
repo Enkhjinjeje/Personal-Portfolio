@@ -13,5 +13,3 @@ npm test           # Playwright, against a production build
 - `src/components/field/` — the dot field behind every page, and the flow between pages
 - `src/components/projects/` — the endless projects canvas
 - `src/content.ts` — the facts, links, projects and experience the pages show
-
-Deploys to Vercel with no settings to change.

@@ -22,13 +22,16 @@ type FieldControls = {
   ripple(x: number, y: number): void
   // change page with a flow from (x, y), in viewport px
   go(href: string, x: number, y: number): void
+  // the page's wordmark has new words: the old ones come loose and the new ones gather from the dots around them
+  regather(): void
 }
-const FieldContext = createContext<FieldControls>({ colored: false, wave() {}, ripple() {}, go() {} })
+const FieldContext = createContext<FieldControls>({ colored: false, wave() {}, ripple() {}, go() {}, regather() {} })
 export const useField = () => useContext(FieldContext)
 
 // The dot field behind every page, fixed to the viewport and kept across navigation. On a page with a
 // `.hero-portrait` the portrait is set into it, and a `.wordmark`'s data-word is drawn across that element's width in
-// its own font; on other pages they fade out. The pointer is tracked on the window so the field reacts through the
+// its own font (on a page with a wordmark and no portrait, the work page's role, only the words show); on other
+// pages they fade out. The pointer is tracked on the window so the field reacts through the
 // content, and a click on anything that isn't a control sends a colour wave across the portrait, or a plain ring on
 // other pages.
 export default function FieldProvider({ children }: { children: ReactNode }) {
@@ -37,6 +40,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
   const flow = useRef<Flow | null>(null)
   const scene = useRef(() => {})
   const arrive = useRef(() => {})
+  const regather = useRef(() => {})
   const portraitBox = useRef<DOMRect | null>(null)
   const [colored, setColored] = useState(false)
   const pathname = usePathname()
@@ -62,35 +66,47 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     let disposed = false
     pictured.then(() => { if (!disposed && !flow.current) place() })
 
-    // set the current page's portrait and wordmark into the field; returns whether the page has a portrait
+    // the page's wordmark, drawn for the field
+    const word = (c: DOMRect) => {
+      const el = document.querySelector<HTMLElement>('.wordmark')
+      if (!el) return undefined
+      const mark = letter(el, c)
+      el.classList.add(mark ? 'is-drawn' : 'is-plain')
+      return mark
+    }
+    // set the current page's portrait and wordmark into the field; returns which of them the page has
     const place = () => {
-      const frame = document.querySelector('.hero-portrait'), word = document.querySelector<HTMLElement>('.wordmark')
+      const frame = document.querySelector('.hero-portrait')
       const c = el.getBoundingClientRect()
       portraitBox.current = frame ? frame.getBoundingClientRect() : null
       const r = portraitBox.current
       if (r && portrait.naturalWidth) f.setImage({ image: portrait, x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height })
-      // with no wordmark on the page the old one stays set, so it fades out with the portrait
-      if (word) {
-        const mark = letter(word, c)
-        word.classList.add(mark ? 'is-drawn' : 'is-plain')
-        f.setMark(mark)
-      }
-      return !!r
+      const mark = word(c)
+      // a wordmark without the portrait shows alone; with neither, the old ones stay set and fade out together
+      if (mark !== undefined && !r) f.setImage(null)
+      if (mark !== undefined) f.setMark(mark)
+      return { portrait: !!r, word: mark !== undefined }
     }
-    // a page reached by loading or by the browser's back and forward: the name gathers, the portrait fades
+    // a page reached by loading or by the browser's back and forward: the words gather, the portrait fades
     scene.current = () => ready.then(() => {
       if (disposed) return
       watch()
-      const home = place()
-      f.show(home)
-      if (home) f.assemble()
+      const has = place()
+      f.show(has.portrait || has.word)
+      if (has.word) f.assemble()
+    })
+    regather.current = () => ready.then(() => {
+      if (disposed || flow.current) return
+      const mark = word(el.getBoundingClientRect())
+      if (mark !== undefined) f.regather(mark)
     })
     // a page reached by a flow, while the flow hides everything: set it at once, then send the flow back
     arrive.current = () => ready.then(() => {
       const fl = flow.current
       if (disposed || !fl) return
       watch()
-      f.show(place(), true)
+      const has = place()
+      f.show(has.portrait || has.word, true)
       fl.phase = 'back'
       fl.start = performance.now()
     })
@@ -129,7 +145,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
     const move = (e: PointerEvent) => f.pointer(...local(e), e.timeStamp)
     const leave = () => f.leave()
     const click = (e: MouseEvent) => {
-      if (flow.current || (e.target as Element).closest('a, button, summary, input, textarea, label, .curious-mind, .project-field, .project-detail')) return
+      if (flow.current || (e.target as Element).closest('a, button, summary, input, textarea, label, dialog, .curious-mind, .project-field, .project-detail')) return
       if (portraitBox.current) setColored(f.wave(...local(e)))
       else f.ripple(...local(e))
     }
@@ -184,6 +200,7 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
       if (f && r) setColored(f.wave(r.left + r.width / 2, r.top + r.height / 2))
     },
     ripple(x, y) { field.current?.ripple(x, y) },
+    regather() { regather.current() },
     go(href, x, y) {
       if (flow.current) return
       if (href === pathname) { field.current?.ripple(x, y); return }
@@ -202,22 +219,25 @@ export default function FieldProvider({ children }: { children: ReactNode }) {
 }
 
 // The wordmark: the element's data-word in its own font, its ink filling the element's width and centred on its
-// height, drawn at three times its css size so each cell averages a smooth patch of the letters
+// height, drawn at three times its css size so each cell averages a smooth patch of the letters. Line breaks in
+// data-word set the lines one under another, left-aligned; data-fit="box" keeps the whole of it inside the
+// element's height as well.
 function letter(word: HTMLElement, c: DOMRect): FieldMark | null {
   const text = word.dataset.word, r = word.getBoundingClientRect(), css = getComputedStyle(word)
   if (!text || !r.width) return null
   const g = document.createElement('canvas').getContext('2d')!
-  const font = `${css.fontWeight} 200px ${css.fontFamily}`
+  const font = `${css.fontWeight} 200px ${css.fontFamily}`, lines = text.split('\n'), lead = 216
   g.font = font
   g.letterSpacing = '-9px'
-  const m = g.measureText(text)
-  const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
-  const k = r.width * 3 / inkW, out = g.canvas
+  const ms = lines.map(line => g.measureText(line))
+  const inkW = Math.max(...ms.map(m => m.actualBoundingBoxLeft + m.actualBoundingBoxRight))
+  const top = ms[0].actualBoundingBoxAscent, inkH = top + (lines.length - 1) * lead + ms[ms.length - 1].actualBoundingBoxDescent
+  const k = Math.min(r.width * 3 / inkW, word.dataset.fit === 'box' ? r.height * 3 / inkH : Infinity), out = g.canvas
   out.width = Math.ceil(r.width * 3); out.height = Math.ceil(inkH * k)
   g.font = font
   g.letterSpacing = '-9px'
   g.scale(k, k)
-  g.fillText(text, m.actualBoundingBoxLeft, m.actualBoundingBoxAscent)
+  lines.forEach((line, n) => g.fillText(line, ms[n].actualBoundingBoxLeft, top + n * lead))
   const h = out.height / 3
   return { source: out, box: { x: r.left - c.left, y: r.top - c.top + (r.height - h) / 2, w: r.width, h } }
 }

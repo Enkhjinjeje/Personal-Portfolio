@@ -141,7 +141,7 @@ export default function ProjectField() {
         return
       }
       const d = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key]
-      if (!d || (e.target as Element).closest?.('input, textarea')) return
+      if (!d || (e.target as Element).closest?.('input, textarea, dialog')) return
       e.preventDefault()
       p.vx = p.vy = 0
       p.tx += d[0] * STEP; p.ty += d[1] * STEP

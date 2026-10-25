@@ -6,6 +6,7 @@ import './vinyl-player.css'
 
 type Controller = {
   togglePlay: () => void
+  play?: () => void
   destroy: () => void
   addListener: (event: string, callback: (event: { data: { isPaused: boolean; isBuffering: boolean } }) => void) => void
 }
@@ -23,8 +24,11 @@ function loadSpotify() {
   return apiPromise
 }
 
-export default function VinylPlayer() {
-  const [loaded, setLoaded] = useState(false)
+// `autoplay`: the record loads as the page opens and starts playing. Browsers only let sound start once the visitor
+// has done something on the site, so arriving by a click plays at once; arriving straight from an address waits for
+// the first click or key press anywhere (a press on the record itself works it as usual).
+export default function VinylPlayer({ autoplay = false }: { autoplay?: boolean }) {
+  const [loaded, setLoaded] = useState(autoplay)
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -34,19 +38,42 @@ export default function VinylPlayer() {
 
   useEffect(() => {
     if (!loaded) return
-    let cancelled = false
+    let cancelled = false, unhook = () => {}
     const timeout = window.setTimeout(() => { if (!controller.current) setFailed(true) }, 15000)
     loadSpotify().then(api => {
       if (cancelled || !mount.current) return
       api.createController(mount.current, { uri: 'spotify:track:4aK4LNijbD7kkCg54UoIij', width: '100%', height: 80 }, embed => {
         if (cancelled) { embed.destroy(); return }
         controller.current = embed
-        embed.addListener('ready', () => { window.clearTimeout(timeout); setReady(true); setFailed(false) })
-        embed.addListener('playback_update', event => setPlaying(!event.data.isPaused && !event.data.isBuffering))
+        let started = false
+        embed.addListener('ready', () => {
+          window.clearTimeout(timeout); setReady(true); setFailed(false)
+          if (autoplay) start()
+        })
+        embed.addListener('playback_update', event => {
+          if (!event.data.isPaused) started = true
+          setPlaying(!event.data.isPaused && !event.data.isBuffering)
+        })
+        // ask it to play, and if the browser holds it back, ask again at the visitor's first click or key press
+        const start = () => {
+          embed.play ? embed.play() : embed.togglePlay()
+          window.setTimeout(() => {
+            if (started || cancelled) return
+            const go = (e: Event) => {
+              if ((e.target as Element).closest?.('.vinyl-record, .spotify-player')) return
+              off()
+              if (!started && !cancelled) embed.play ? embed.play() : embed.togglePlay()
+            }
+            const off = () => { window.removeEventListener('pointerdown', go, true); window.removeEventListener('keydown', go, true) }
+            window.addEventListener('pointerdown', go, true)
+            window.addEventListener('keydown', go, true)
+            unhook = off
+          }, 1200)
+        }
       })
     }).catch(() => { if (!cancelled) setFailed(true) })
-    return () => { cancelled = true; window.clearTimeout(timeout); controller.current?.destroy(); controller.current = null }
-  }, [loaded])
+    return () => { cancelled = true; unhook(); window.clearTimeout(timeout); controller.current?.destroy(); controller.current = null }
+  }, [loaded, autoplay])
 
   return <section className={`vinyl-player ${playing ? 'is-playing' : ''}`} aria-label="On my turntable">
     <div className="turntable"><span className="deck-screw screw-one"/><span className="deck-screw screw-two"/><span className="speed-knob" aria-hidden="true"/><span className="arm-rest" aria-hidden="true"/>

@@ -190,19 +190,36 @@ export class DotField {
     this.rest = null
   }
 
-  // The wordmark's dots scatter across the screen and fly home, left to right
-  assemble() {
+  // The wordmark's dots scatter, from `near` to `near + spread` css px off their homes (by default across the
+  // screen), and fly home left to right, `pace` times as slowly as at first
+  assemble(spread = Math.max(this.w, this.h) * .45, near = 120, pace = 1) {
     const box = this.markData?.box
     if (this.o.still() || !box) return
-    const { mark, hx, hy, x, y, vx, vy, wait } = this, spread = Math.max(this.w, this.h) * .45
+    const { mark, hx, hy, x, y, vx, vy, wait } = this
     for (let i = 0; i < this.n; i++) {
       if (mark[i] < .05) continue
-      const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * spread
+      const a = Math.random() * Math.PI * 2, d = near + Math.random() * spread
       x[i] = hx[i] + Math.cos(a) * d; y[i] = hy[i] + Math.sin(a) * d * .7
       vx[i] = vy[i] = 0
-      wait[i] = .1 + (hx[i] - box.x) / box.w * .8 + Math.random() * .35
+      wait[i] = (.1 + (hx[i] - box.x) / box.w * .8 + Math.random() * .35) * pace
     }
     this.lastActive = this.time + 2
+  }
+
+  // New words in place of the old: the old letters' dots are knocked loose to drift back into the field, and the
+  // new ones gather from the dots close by
+  regather(mark: FieldMark | null) {
+    const was = this.mark.slice()
+    this.setMark(mark)
+    if (this.o.still()) return
+    const { vx, vy } = this
+    for (let i = 0; i < this.n; i++) {
+      if (was[i] < .05 || this.mark[i] >= .05) continue
+      const a = Math.random() * Math.PI * 2, kick = 2 + Math.random() * 3
+      vx[i] += Math.cos(a) * kick; vy[i] += Math.sin(a) * kick
+    }
+    this.lastStir = this.time
+    this.assemble(150, 30, .9)
   }
 
   setImage(picture: FieldImage | null) {

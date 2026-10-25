@@ -29,8 +29,8 @@ export default function CornerNav() {
     document.getElementById('main')?.scrollTo(0, 0)
     if (pathname === '/') return
     const home = (e: KeyboardEvent) => {
-      // Curious Mind and open menus use Escape themselves
-      if (e.key !== 'Escape' || e.defaultPrevented || (e.target as Element).closest?.('.curious-mind, input, textarea')) return
+      // Curious Mind, open menus and the recruiter view use Escape themselves
+      if (e.key !== 'Escape' || e.defaultPrevented || (e.target as Element).closest?.('.curious-mind, input, textarea, dialog')) return
       go('/', ...centre(document.querySelector('.corner.is-home')))
     }
     window.addEventListener('keydown', home)

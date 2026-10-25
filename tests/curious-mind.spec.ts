@@ -56,29 +56,35 @@ test('interest labels stay above the head and icons open dismissible bubbles', a
       await expect(icon).toBeFocused()
     }
   }
+  // a press away from the head and the card closes the story (the card's own words are on its far side meanwhile)
   await code.click()
-  await page.getByRole('heading', { name: 'Good things happen when curious minds come together.' }).click()
+  await expect(page.locator('#mind-bubble')).toBeVisible()
+  await page.locator('.deck-status').click()
   await expect(page.locator('#mind-bubble')).toHaveCount(0)
 })
 
-test('stories sit left of the head and finish exiting before the latest selection enters', async ({ page }) => {
+test('picking an icon turns the About card over to its story, and closing turns it back', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/about')
   await page.getByRole('button', { name: "Explore what's on my mind" }).click()
-  await page.getByRole('button', { name: 'Building with code', exact: true }).click()
+  const code = page.getByRole('button', { name: 'Building with code', exact: true })
+  await code.click()
   const story = page.locator('#mind-bubble')
-  await expect(story).toHaveClass(/mind-story-idle/)
-  const bounds = await story.boundingBox()
-  const head = await page.locator('.mind-stage').boundingBox()
-  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(head!.x)
-  await page.getByRole('button', { name: 'Connecting cultures', exact: true }).click()
-  await expect(story).toHaveClass(/mind-story-exit/)
   await expect(story).toHaveAccessibleName('Building with code')
+  await expect(page.getByRole('button', { name: 'Close interest details' })).toBeFocused()
+  // the story is on the card, to the right of the head
+  const head = await page.locator('.mind-stage').boundingBox()
+  await expect.poll(async () => (await story.boundingBox())!.x).toBeGreaterThanOrEqual(head!.x + head!.width)
+  // another icon turns it again, to that story
   await page.getByRole('button', { name: 'Always learning', exact: true }).click()
   await expect(story).toHaveCount(1)
   await expect(story).toHaveAccessibleName('Always learning')
-  await expect(story).toHaveClass(/mind-story-idle/)
+  await expect(page.getByRole('heading', { name: 'Building communities, deploying potential.' })).toBeHidden()
+  // Escape turns it back to the words, stays on the page, and gives focus back to the icon
+  await page.keyboard.press('Escape')
+  await expect(story).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Building communities, deploying potential.' })).toBeVisible()
+  await expect(page).toHaveURL(/\/about$/)
+  await expect(page.getByRole('button', { name: 'Always learning', exact: true })).toBeFocused()
   await page.locator('.about').screenshot({ path: 'test-results/mind-story-desktop.png' })
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.locator('.curious-mind').screenshot({ path: 'test-results/mind-story-mobile.png' })
 })

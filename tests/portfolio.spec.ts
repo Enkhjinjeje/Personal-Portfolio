@@ -4,7 +4,7 @@ const pages = [
   { path: '/', corner: 'Home', heading: /Jeje/ },
   { path: '/projects', corner: 'Projects', heading: 'Projects.' },
   { path: '/work', corner: 'Work experience', heading: 'Work experience.' },
-  { path: '/about', corner: 'About me', heading: 'Good things happen when curious minds come together.' },
+  { path: '/about', corner: 'About me', heading: 'Building communities, deploying potential.' },
   { path: '/contact', corner: 'Contact', heading: /Let’s make/ },
 ]
 
@@ -81,18 +81,20 @@ test('the four corners flow between pages that each fit one screen', async ({ pa
   await expect(page).toHaveURL(/\/$/)
   await expect(page.locator('html')).not.toHaveClass(/is-flowing/)
 
-  // one role open at a time
+  // the roles turn on a dial: picking one, or turning it with the arrow keys, shows that role beside it
   await page.goto('/work')
-  const rows = page.locator('details.experience-row')
-  await expect(rows).toHaveCount(5)
-  await rows.nth(0).locator('summary').click()
-  await expect(rows.nth(0)).toHaveAttribute('open', '')
-  await expect(rows.nth(0)).toContainText('2,279')
-  await rows.nth(1).locator('summary').click()
-  await expect(rows.nth(1)).toHaveAttribute('open', '')
-  await expect(rows.nth(0)).not.toHaveAttribute('open')
-  await rows.nth(1).locator('summary').click()
-  await expect(rows.nth(1)).not.toHaveAttribute('open')
+  const roles = page.getByRole('tab')
+  const panel = page.getByRole('tabpanel')
+  await expect(roles).toHaveCount(5)
+  await expect(roles.nth(0)).toHaveAttribute('aria-selected', 'true')
+  await expect(panel).toContainText('2,279')
+  await roles.nth(1).click()
+  await expect(roles.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await expect(panel).toContainText('9-member board')
+  await page.keyboard.press('ArrowDown')
+  await expect(roles.nth(2)).toHaveAttribute('aria-selected', 'true')
+  await expect(roles.nth(2)).toBeFocused()
+  await expect(panel).toContainText('300+ total attendees')
   await expect.poll(() => page.locator('img').evaluateAll(images => images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true)
 
   await page.goto('/contact')
@@ -142,4 +144,22 @@ test('every page is served, with its own title, before JavaScript runs', async (
   await page.goto('/about')
   await expect(page).toHaveTitle('About me — Jeje')
   await page.close()
+})
+
+test('recruiter mode lays out the résumé over any page, and closes back to it', async ({ page }) => {
+  await page.goto('/work')
+  await page.waitForLoadState('networkidle')
+  await page.getByRole('button', { name: 'Recruiter' }).click()
+  const sheet = page.getByRole('dialog', { name: /Chuluunkhuu/ })
+  await expect(sheet).toBeVisible()
+  await expect(sheet).toContainText('GPA 3.4')
+  await expect(sheet).toContainText('88 participants at Amazon')
+  await expect(page).toHaveURL(/\/work#recruiter$/)
+  // Escape closes it, and stays on the page instead of flowing home
+  await page.keyboard.press('Escape')
+  await expect(sheet).toBeHidden()
+  await expect(page).toHaveURL(/\/work$/)
+  // a link to #recruiter opens it straight away
+  await page.goto('/projects#recruiter')
+  await expect(page.getByRole('dialog', { name: /Chuluunkhuu/ })).toBeVisible()
 })

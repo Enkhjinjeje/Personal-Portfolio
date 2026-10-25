@@ -6,6 +6,7 @@ import FieldProvider from '../components/field/FieldProvider'
 import { preload } from 'react-dom'
 import CornerNav from '../components/CornerNav'
 import ThemeToggle from '../components/ThemeToggle'
+import RecruiterMode from '../components/RecruiterMode'
 import portrait from '../assets/portrait-cutout.webp'
 
 // self-hosted and preloaded at build time, with a fallback sized to match, so the text doesn't jump when it loads
@@ -42,7 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <FieldProvider>
         <a className="skip-link" href="#main">Skip to content</a>
         <CornerNav />
-        <div className="top-center"><ThemeToggle /></div>
+        <div className="top-center"><ThemeToggle /><RecruiterMode /></div>
         <main id="main" className="stage">{children}</main>
       </FieldProvider>
     </body>

@@ -71,7 +71,6 @@
 @media (min-width:701px) and (max-width:1100px) {
   .about-layout { grid-template-columns:1fr; gap:45px; }
   .curious-mind { max-width:680px; grid-template-columns:minmax(0,1fr) 360px; }
-  .about-copy { max-width:65ch; }
 }
 @media (max-width:700px) {
   .about-layout { grid-template-columns:1fr; gap:30px; }
@@ -88,12 +87,7 @@
   .mind-story-exit { opacity:0; }
 }
 
-/* The music and the thoughts share the left side of the About page. */
-.mind-panel {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1fr);column-gap:20px;align-items:center;min-width:0}
-.mind-panel>.vinyl-player {grid-column:1;grid-row:1;z-index:2;transition:opacity .25s,visibility .25s}
-.mind-panel>.curious-mind {grid-column:1/-1;grid-row:1;pointer-events:none}
-.mind-panel .mind-stage,.mind-panel .mind-trigger,.mind-panel .mind-story-slot {pointer-events:auto}
-.mind-panel:has(.mind-bubble)>.vinyl-player {opacity:0;visibility:hidden;pointer-events:none}
+/* The story notes, set like a note taped beside the head. */
 .mind-story-slot {overflow:visible;position:relative;z-index:12}
 .mind-bubble {background:#eee9d9;color:#24231f;padding:38px 20px 24px;transform-origin:calc(100% + 50px) var(--note-origin-y,50%);border-radius:2px;box-shadow:0 16px 34px #0002}
 .mind-bubble p {color:#514e45;font-size:13px;line-height:1.7}
@@ -107,14 +101,9 @@
 @keyframes mind-story-in {from {opacity:0;transform:translateX(45px) scale(.12) rotate(9deg)}to {opacity:1;transform:translateX(0) scale(1) rotate(-3deg)}}
 @keyframes mind-story-out {from {opacity:1;transform:scale(1) rotate(-3deg)}to {opacity:0;transform:translateX(45px) scale(.12) rotate(9deg)}}
 @media(max-width:700px) {
-  .mind-panel {grid-template-columns:1fr;row-gap:20px}
-  .mind-panel>.vinyl-player {grid-column:1;grid-row:2;width:280px;margin-top:18px}
-  .mind-panel>.curious-mind {grid-column:1;grid-row:1}
-  .mind-panel:has(.mind-bubble)>.vinyl-player {opacity:1;visibility:visible;pointer-events:auto}
   .mind-story-slot {padding:16px 8px}
   .mind-bubble {transform-origin:50% 0}
   @keyframes mind-story-in {from {opacity:0;transform:translateY(-35px) scale(.15) rotate(6deg)}to {opacity:1;transform:translateY(0) scale(1) rotate(-2deg)}}
   @keyframes mind-story-out {from {opacity:1;transform:scale(1) rotate(-2deg)}to {opacity:0;transform:translateY(-35px) scale(.15)}}
 }
-@media(prefers-reduced-motion:reduce) {.mind-panel>.vinyl-player {transition:none}.mind-story-enter,.mind-story-exit {animation:none;transform:none}}
-.mind-panel .mind-story-slot:empty {pointer-events:none}
+@media(prefers-reduced-motion:reduce) {.about > .vinyl-player {transition:none}.mind-story-enter,.mind-story-exit {animation:none;transform:none}}

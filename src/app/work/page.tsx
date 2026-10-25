@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
-import { ArrowUpRight, Minus, Plus } from 'lucide-react'
-import { experience, resume } from '../../content'
+import { ArrowUpRight } from 'lucide-react'
+import WorkDial from '../../components/WorkDial'
+import { resume } from '../../content'
 
 export const metadata: Metadata = { title: 'Work experience' }
 
@@ -9,18 +10,11 @@ export default function WorkPage() {
     <div className="work-intro">
       <h1 id="work-heading" className="page-title">Work experience.</h1>
       <p className="work-lead">Jobs, and the communities I’ve built, newest first.</p>
-      <div className="education">
-        <h2>Always learning.</h2>
-        <p>University of Washington</p>
-        <p className="text-secondary">Bachelor of Computer Science · Expected June 2028</p>
-      </div>
-      <a className="text-link inline-flex items-center gap-2" href={resume} target="_blank" rel="noreferrer">Full résumé <ArrowUpRight size={16}/></a>
     </div>
-    <div className="work-roles">
-      {experience.map(item => <details className="experience-row" name="experience" id={item.id} key={item.id}>
-        <summary><span className="experience-date">{item.date}</span><span className="experience-role"><strong>{item.org}</strong><span>{item.role}</span></span><Plus className="expand-icon" size={20}/><Minus className="collapse-icon" size={20}/></summary>
-        <p className="experience-description">{item.text}</p>
-      </details>)}
+    <WorkDial />
+    <div className="work-foot">
+      <p className="education"><strong>University of Washington</strong> Bachelor of Computer Science · Expected June 2028</p>
+      <a className="text-link inline-flex items-center gap-2" href={resume} target="_blank" rel="noreferrer">Full résumé <ArrowUpRight size={16}/></a>
     </div>
   </section>
 }

@@ -24,29 +24,30 @@ test('About and its notes fit the viewport without scrolling', async ({ page }) 
   }
 })
 
-test('turntable responds to playback, and its controls do not resize About', async ({ page }) => {
+test('the turntable starts playing on arrival, and pauses and plays from the record', async ({ page }) => {
   await page.route('https://open.spotify.com/embed/iframe-api/v1', route => route.fulfill({ contentType: 'application/javascript', body: `
     window.onSpotifyIframeApiReady({ createController(element, options, callback) {
       let paused = true;
       const listeners = {};
+      const update = () => listeners.playback_update({ data: { isPaused: paused, isBuffering: false } });
       callback({
         addListener(name, handler) { listeners[name] = handler; if(name === 'ready') setTimeout(handler, 0); },
-        togglePlay() { paused = !paused; listeners.playback_update({ data: { isPaused: paused, isBuffering: false } }); },
+        play() { paused = false; update(); },
+        togglePlay() { paused = !paused; update(); },
         destroy() {}
       });
     }});
   ` }))
   await page.goto('/about')
-  await page.getByRole('button', { name: 'Load Feather by Nujabes' }).click()
-  await expect(page.getByRole('button', { name: 'Play Feather by Nujabes' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Close Spotify controls' }).click()
-  await page.getByRole('button', { name: 'Play Feather by Nujabes' }).click()
+  // it loads Spotify and plays as the page opens
   await expect(page.locator('.vinyl-player')).toHaveClass(/is-playing/)
   await expect(page.locator('.record-disc')).toHaveCSS('animation-play-state', 'running')
   await page.getByRole('button', { name: 'Pause Feather by Nujabes' }).click()
   await page.mouse.move(0, 0)
   await expect(page.locator('.vinyl-player')).not.toHaveClass(/is-playing/)
   await expect(page.locator('.record-disc')).toHaveCSS('animation-play-state', 'paused')
+  await page.getByRole('button', { name: 'Play Feather by Nujabes' }).click()
+  await expect(page.locator('.vinyl-player')).toHaveClass(/is-playing/)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await expect(page.locator('.record-disc')).toHaveCSS('animation-name', 'none')
 })
