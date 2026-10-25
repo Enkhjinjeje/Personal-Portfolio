@@ -26,12 +26,14 @@ export function spotCentre(layout: Layout, scale: number, i: number) {
   return [(layout.spots[i][0] + TILE.w / 2) * scale, (layout.spots[i][1] + TILE.h / 2) * scale] as const
 }
 
-// the canvas offset that puts the whole group of projects in the middle of a view this size
+// the canvas offset that puts the whole group of projects in the middle of a view this size, but never with the
+// first one up under the page title
+const TITLE_CLEAR = 72  // css px
 export function groupCentre(layout: Layout, scale: number, width: number, height: number) {
   const xs = layout.spots.map(s => s[0]), ys = layout.spots.map(s => s[1])
   return [
     width / 2 - (Math.min(...xs) + Math.max(...xs) + TILE.w) / 2 * scale,
-    height / 2 - (Math.min(...ys) + Math.max(...ys) + TILE.h) / 2 * scale,
+    Math.max(height / 2 - (Math.min(...ys) + Math.max(...ys) + TILE.h) / 2 * scale, TITLE_CLEAR - Math.min(...ys) * scale),
   ] as const
 }
 

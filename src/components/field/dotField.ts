@@ -27,7 +27,8 @@ export const FIELD_DEFAULTS = {
   ringWidth: 46,
   ringPush: 2.4,
   breathe: 1.6,      // idle wave amplitude, px
-  peekRadius: 85,    // how far round the pointer the image shows its other look
+  peekRadius: 72,    // how far round the pointer the image shows its other look
+  peekRim: 10,       // the lens's edge, css px: full strength inside it, so the circle reads clearly
   idleFps: 30,       // draw rate once nothing has moved for a moment
   color: null as string | null,  // dot colour; defaults to the canvas's computed --ink
   invert: 0,         // 1 = light parts of the image get the big dots (light dots on a dark ground)
@@ -392,15 +393,17 @@ export class DotField {
         const d = dx > R || dx < -R || dy > R || dy < -R ? R : Math.hypot(dx, dy)
         if (d < R && d > .01) {
           near = 1 - d / R
-          // the colour picture gives way like the rest of the field, its circles carrying the photo with them
-          const f = near * near * shove
-          ax += dx / d * f; ay += dy / d * f
+          // the rest of the field gives way; the portrait holds still, and the pointer only turns its look (below)
+          if (!cover[i]) {
+            const f = near * near * shove
+            ax += dx / d * f; ay += dy / d * f
+          }
         }
         // the spotlight measures from the home cell, so it holds steady while the dots scatter
         if (cover[i] && lens) {
           const hdx = hx[i] - p.x, hdy = hy[i] - p.y
           if (hdx < P && hdx > -P && hdy < P && hdy > -P) {
-            const k = Math.max(0, 1 - Math.hypot(hdx, hdy) / P)
+            const k = Math.min(1, Math.max(0, (P - Math.hypot(hdx, hdy)) / o.peekRim))
             look = k * k * (3 - 2 * k)
           }
         }
