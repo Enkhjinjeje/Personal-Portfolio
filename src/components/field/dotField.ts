@@ -90,6 +90,7 @@ export class DotField {
   private detailY = 0
   private covered = 0   // how many dots the portrait covers
   private tiles: number[][] = Array.from({ length: TILE_LEVELS }, () => [])
+  private squares: number[][] = Array.from({ length: BUCKETS }, () => [])  // x, y, size of each square dot, by brightness
   private hold: { x: number, y: number } | null = null  // where a wave was sent; the lens waits until the pointer leaves it
   private live: number[] = []  // the portrait's and the wordmark's dots: once the field settles, the only ones that move
   private rest: HTMLCanvasElement | null = null  // the settled field without them, painted once while it stays idle
@@ -475,13 +476,14 @@ export class DotField {
   // Trace the dots in `list` (all of them when null), leaving out the portrait's and the wordmark's when `still`, and
   // fill them by brightness; colour circles are queued in tiles for colourCircles
   private dots(g: CanvasRenderingContext2D, list: number[] | null, still: boolean) {
-    const { dpr, x, y, hx, hy, bloom, tone, cover, hue, peek, mark, v, gap, detail, tiles, pres } = this
+    const { dpr, x, y, hx, hy, bloom, tone, cover, hue, peek, mark, v, gap, detail, tiles, squares, pres } = this
     const full = gap * .56
     // where the highlight is in its sweep through the wordmark, if it is crossing now
     const box = this.markData?.box, phase = this.time % SHINE_EVERY, band = 150
     const sweep = box && phase < SHINE_FOR ? box.x - band + phase / SHINE_FOR * (box.w + band * 2) : null
     g.fillStyle = this.ink
     const paths = Array.from({ length: BUCKETS }, () => new Path2D())
+    for (const list of squares) list.length = 0
     const fl = this.flow
     for (let j = 0, count = list ? list.length : this.n; j < count; j++) {
       const i = list ? list[j] : j
@@ -512,12 +514,16 @@ export class DotField {
       // a dot's brightness follows its size; on a dark page more gently, so mid-tones stay mid-grey
       const k = Math.round(Math.min(1, Math.max(b, t * (v.invert ? 1.25 : 1.8))) * (BUCKETS - 1))
       // sub-pixel dots draw as squares on whole device pixels, so a resting grid stays crisp instead of blurring
-      if (r < 1) { paths[k].rect(Math.round((x[i] - r) * dpr) / dpr, Math.round((y[i] - r) * dpr) / dpr, Math.max(1 / dpr, Math.round(r * 2 * dpr) / dpr), Math.max(1 / dpr, Math.round(r * 2 * dpr) / dpr)); continue }
+      if (r < 1) { squares[k].push(Math.round((x[i] - r) * dpr) / dpr, Math.round((y[i] - r) * dpr) / dpr, Math.max(1 / dpr, Math.round(r * 2 * dpr) / dpr)); continue }
       paths[k].moveTo(x[i] + r, y[i])
       paths[k].arc(x[i], y[i], r, 0, Math.PI * 2)
     }
+    // the squares are filled one by one: Safari fills a path of thousands of tiny rects some forty times slower than
+    // it fills them singly, which held an iPhone to about 15fps; elsewhere either way is about as fast
     paths.forEach((path, k) => {
       g.globalAlpha = v.restAlpha + (1 - v.restAlpha) * k / (BUCKETS - 1)
+      const sq = squares[k]
+      for (let q = 0; q < sq.length; q += 3) g.fillRect(sq[q], sq[q + 1], sq[q + 2], sq[q + 2])
       g.fill(path)
     })
   }
