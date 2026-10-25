@@ -45,6 +45,7 @@
 @keyframes station-pulse {from {transform:scale(.6);opacity:.9} to {transform:scale(1.6);opacity:0}}
 .station-name {display:grid;gap:2px;max-width:18ch}
 .station-n {font-variant-numeric:tabular-nums;opacity:.7}
+.project-line-now {display:none}
 
 /* opening a project: the canvas steps back, rings of dots spin out from the middle, and the project pops up there */
 .projects.is-showing .project-field {filter:blur(3px);opacity:.35;transition:filter .5s,opacity .5s}
@@ -74,22 +75,21 @@
 .project-detail .text-link {justify-self:start}
 .project-detail-close {position:absolute;right:14px;top:14px;z-index:1;width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--soft);color:inherit}
 
-/* ---- Phones ---- no canvas: the projects stand in a list that scrolls inside the stage, and fade into the dots at
-   its top and bottom. Until script picks one, the stylesheet shows the one that fits. */
-.project-list-page {display:none}
-.project-list {position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;--tile-scale:1;padding-block:44px 72px;
-  -webkit-mask-image:linear-gradient(transparent,#000 44px,#000 calc(100% - 72px),transparent);mask-image:linear-gradient(transparent,#000 44px,#000 calc(100% - 72px),transparent)}
-.project-list::-webkit-scrollbar {display:none}
-.project-list-title {font-size:30px;margin-bottom:28px}
-.project-list ol {display:grid;gap:36px;list-style:none;margin:0;padding:0}
-.project-row {display:grid;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
-.project-row:active .pic-sharp,.project-row:focus-visible .pic-sharp {opacity:1}
-.project-row:active .project-tile-pic,.project-row:focus-visible .project-tile-pic {outline-color:var(--ink)}
-.project-row:focus-visible {outline:none}
-.projects.is-showing .project-list {filter:blur(3px);opacity:.35;transition:filter .5s,opacity .5s}
-
 @media (max-width:700px) {
-  .projects:not(.project-list-page) {display:none}
-  .project-list-page {display:grid}
+  /* above the bottom corners on a phone */
+  .projects-hint {bottom:calc(var(--edge) + 64px)}
+  .project-line {bottom:calc(var(--edge) + 80px)}
+  /* the stations show just their numbers, with the name of the one in view centred beneath them */
+  .project-line button {gap:4px}
+  .station-name {font-size:0}
+  .station-n {font-size:11px}
+  .project-line-now {display:block;margin-top:2px;text-align:center;font-size:12px;color:var(--ink)}
+  /* the tiles fade out before they reach the stations */
+  .project-field {-webkit-mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent),linear-gradient(transparent,#000 9%,#000 66%,transparent 80%);mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent),linear-gradient(transparent,#000 9%,#000 66%,transparent 80%)}
+  /* smaller tiles, so all three projects fit on the screen */
+  .project-tile {gap:6px}
+  .pic-dots {--dot:3px}
+  .project-tile-kind {left:4px;bottom:4px;padding:2px 5px;font-size:9px}
+  .project-tile-n {font-size:10px}
   .project-detail {grid-template-columns:1fr;width:100%;max-height:100%;padding:16px;gap:14px}
 }

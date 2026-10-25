@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Projects from '../../components/projects/Projects'
+import ProjectField from '../../components/projects/ProjectField'
 
 export const metadata: Metadata = { title: 'Projects' }
 
 export default function ProjectsPage() {
-  return <Projects />
+  return <ProjectField />
 }
