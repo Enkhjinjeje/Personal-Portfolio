@@ -8,8 +8,8 @@ export const TILE = { w: 320, h: 200 }   // a tile's picture, css px at full siz
 // repeats in every direction, so the canvas never ends. A narrow screen gets a zigzag about as wide as the screen,
 // stretched downward where a phone has room, with clear space between each project and the next copy of the block.
 export const LAYOUTS = {
-  wide: { block: { w: 1380, h: 1000 }, spots: [[80, 80], [780, 220], [340, 600]] },
-  narrow: { block: { w: 880, h: 1200 }, spots: [[40, 60], [460, 430], [60, 820]] },
+  wide: { block: { w: 1520, h: 1000 }, spots: [[80, 80], [720, 200], [300, 600], [1060, 560]] },
+  narrow: { block: { w: 880, h: 1580 }, spots: [[40, 60], [460, 430], [60, 820], [460, 1190]] },
 }
 export type Layout = typeof LAYOUTS.wide
 

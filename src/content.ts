@@ -77,4 +77,12 @@ export const projects: Project[] = [
     stack: ['Next.js', 'Vercel'],
     link: { href: 'https://mmstudent.vercel.app/', label: 'mmstudent.vercel.app' },
   },
+  {
+    id: 'fitted-uwb', title: 'Fitted UWB website', kind: 'Club website', image: '/projects/fitted.webp',
+    text: 'A site for Fitted, the student fashion club I founded at UW Bothell: swaps, bleached tees, DIY nights and outfit hikes. A ring of clothing turns around the logo, and a timeline of posters walks through the year’s events.',
+    details: [{ label: 'Role', items: ['Design', 'Development'] }, { label: 'For', items: ['Fitted UWB, student fashion club'] }],
+    figures: [{ value: '12', label: 'event posters' }],
+    stack: ['Next.js', 'Vercel'],
+    link: { href: 'https://fitteduwb.vercel.app/', label: 'fitteduwb.vercel.app' },
+  },
 ]
