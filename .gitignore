@@ -13,5 +13,5 @@ playwright-report/
 .taste-skill/
 .impeccable/
 
-# side projects kept beside the portfolio, not part of it
-experiments/
+# written by `next dev` on every run
+AGENTS.md
